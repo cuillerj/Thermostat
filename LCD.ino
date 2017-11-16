@@ -12,7 +12,23 @@ void LCDRefresh() {
   lcd.setCursor(0, 1);
   if (runningMode != modeOff) {
     lcd.print(tempInstruction, 1);
-    lcd.print("!");
+    if (bitRead(runningMode, temporarilyHoldModeBit) || bitRead(runningMode, manualAutoModeBit)) { // hold mode
+      if (bitRead(runningMode, temporarilyHoldModeBit)) {  // forced mode
+        lcd.print("h");
+      }
+      else {
+        lcd.print("f");
+      }
+    }
+    else {
+      if (securityOn) {
+        lcd.print("s");
+      }
+      else {
+        lcd.print("!");
+      }
+    }
+
   }
   else {
     //  lcd.print("Off ");

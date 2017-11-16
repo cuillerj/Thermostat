@@ -12,21 +12,21 @@ void ExecuteCommand()
     {
       digitalWrite(GatewayRelayPin, 0);
     }
-    else{
-      digitalWrite(GatewayRelayPin, 1);      
+    else {
+      digitalWrite(GatewayRelayPin, 1);
     }
   }
   if bitRead(pendingCommand, updateTemperatureBit)
   {
     bitWrite(runningMode, manualAutoModeBit, 1);
-    manualModeStartTime=millis();
+    manualModeStartTime = millis();
     if ((pendingCommand & 0x3f) == increaseTemp)
     {
-      tempInstruction = min(tempInstruction + .5, maximumTemperature);
+      tempInstruction = min(tempInstruction + .5, float(thermostatRegister[maximumTemperatureRegister]) / 10);
     }
     if ((pendingCommand & 0x3f) == decreaseTemp)
     {
-      tempInstruction = max(tempInstruction - .5, 0);
+      tempInstruction = max(tempInstruction - .5, float(minimumTemperature) / 10);
     }
   }
   pendingCommand = 0x00;

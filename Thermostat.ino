@@ -1,9 +1,11 @@
 
 #define Version "Th"
-#define ver = 0x01; // version
+#define ver 0x01 // version
 
 #define debugConnection true     // can only be set with ATmega2560 or ATmega1280
 #define debugOn true     // can only be set with ATmega2560 or ATmega1280
+#define debugDS1820 true
+#define debugEeprom true
 /*
    V0 refonte en cours de pilotage chaudiere (   remplacement de la communication RF par WIFI gateway ESP8266,   suppression du module DHT, ajout d'une fonction ecriture eeprom,
    prevoir traiter info event externes (alarme, ouverture porte & fenetre...)...
@@ -23,6 +25,8 @@
 #include <SerialLink.h>
 #define receiveFlagPosition 0
 #define PendingReqRefSerial  0x01; // 0x01 request to the gateway means route (ready to eventualy add some more action in the gateway)
+#define toAckFrame true
+#define noAckFrame false
 //uint8_t PendingSecReqRefSerial = 0x01; // 0x01 request to the gateway means route
 byte cycleRetrySendUnit = 0; // cycle retry check unitary command - used in case of acknowledgement needed from the Linux server
 uint8_t trameNumber = 0;     // frame number to send
@@ -30,11 +34,8 @@ uint8_t lastAckTrameNumber = 0;  // last frame number acknowledged by the server
 uint8_t pendingAckSerial = 0;    // flag waiting for acknowledged
 int retryCount = 0;            // number of retry for sending
 uint8_t pendingRequest;
-
-
-
 uint8_t gatewayStatus = 0x00;    // 0x00 not ready  0x01 ready GPIO on wait boot completed 0x02 ready
-
+boolean securityOn = false;
 
 #include <thermostatDefines.h> // contient les parametres de config initiale
 #include <thermostatInstructions.h> // contient les parametres de config initiale
@@ -49,13 +50,21 @@ SerialLink GatewayLink(gatewayLinkSpeed);   // define the object link to the gat
 uint8_t pendingCommand = 0x00;
 
 /*
-
+   registers
 */
-uint8_t diagByte = 0xff;
-uint8_t bootByte = 0xff;
+uint8_t thermostatRegister[registerSize] = {reactivity, sizeAnticipation, maximumTemperature, outHomeTemperatureDecrease, KpPID, KiPID, KpdPID, thresholdPID};
+
+/*
+    diagnostics
+*/
+uint8_t diagByte = diagInitMask;
+#define bootStepsNumber 3
+uint8_t bootMode = bootStepsNumber;
 uint8_t prevDiagByte = diagByte;
-boolean meteoUpToDate = false;
-uint8_t thermostatRegister[registerSize] = {reactivity, sizeAnticipation, maximumTemperature, absenceTemperatureReduction, KpPID, KiPID, KpdPID, thresholdPID};
+boolean relayPinStatus = false;
+
+int uploadCurrentIdx = -1;
+
 /*
     commands
 */
@@ -65,9 +74,12 @@ uint8_t thermostatRegister[registerSize] = {reactivity, sizeAnticipation, maximu
    temperature variables
 */
 #define manualAutoModeBit 7
+#define temporarilyHoldModeBit 6
 #define noTempAvailable -100
-uint8_t runningMode = 0x04; //
+uint8_t runningMode = modeOff; //
 float tempInstruction = temperatureList[modeNotFreezing] / 10; // init to no freezze threshold
+float previousInstruction = tempInstruction;
+float refTempRelayOn;
 int prevTarget = 0;
 int extTemp = noTempAvailable;
 
@@ -83,8 +95,10 @@ uint8_t ds1820Addr[8];
 */
 uint8_t LCDLoopValue = 0x00;
 
+uint8_t WorkAnticip[7];  // zone de travail anticipation consigne
+
 /*
-  PID
+     PID
 */
 #define PIDDataSize 5
 int dataPID[PIDDataSize] = {0, 0, 0, 0, 0}; // temperature * 10
@@ -92,6 +106,8 @@ uint8_t PIDCycle = 0x00;
 int sigmaPrec = 99999; //
 int sigmaE = 0;
 int windowSize = 0;
+uint8_t statPID = 0x00; // statut resultat du PID
+uint8_t switchPID = 0x00;
 /*
    timers
 */
@@ -104,8 +120,17 @@ int windowSize = 0;
 #define LCDRefreshCycle 5000
 #define instructionRefreshCycle 15000
 #define extTempRefreshCycle 300000
-#define manualMaxDuration 2*60*60*100
-unsigned long durationSincegatewayReady;  //  duration since GPIO ready goes on
+#define manualMaxDuration 7200000    //2h
+#define extTempDuration 10800000     //3h
+#define autoSaveModeDuration 43200000    // 24h
+#define hysteresisDelay 120000
+#define PIDCyclDuration 120000
+#define sendStatusCycle 300000
+#define completeBootDuration 180000
+#define uploadIntervalDuration 10000
+#define connexionTimeout 1800000  // 30mn
+
+unsigned long durationSincegatewayReady;  //
 unsigned long lastUpdateClock;
 unsigned long pendingRequestClock;
 unsigned long timeSendSecSerial;  // used to check for acknowledgment of secured frames
@@ -116,8 +141,15 @@ unsigned long PIDLastComputedTime;
 unsigned long LCDLastRefreshTime;
 unsigned long instructionRefreshTime;
 unsigned long extTempRefreshTime;
-unsigned long manualModeStartTime;
-
+unsigned long extTempUpdatedTime;
+unsigned long manualModeStartTime = 0;
+unsigned long changeModeTime;
+unsigned long timeSwitchOnOff;
+unsigned long PIDCycleTime;
+unsigned long sendStatusTime;
+unsigned long uploadlastTime;
+unsigned long lastReceivedTime;
+unsigned long endOfTemporarilyHoldTime;
 #define MonthList "JanFebMarAprMayJunJulAugSepOctNovDec"  // do not change can not be localized
 RTC_DS1307 RTC;
 LiquidCrystal_I2C lcd(LCDAddr, LCDChars, LCDLines); // set the LCD address to 0x27 for a 16 chars and 2 line display
@@ -135,17 +167,18 @@ void setup() {
      initialize serial link
      arduino to gateway serial link will be serial with Uno and serial2 with Mega
   */
-  GatewayLink.SerialBegin();
+
 #if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)   // with mega serial remains available 
   Serial.begin(38400);
 #endif
-  setParameters();
+  LoadParameters();
   pinMode(GatewayReadyPin, INPUT);
   pinMode(InfraRedPIN, INPUT);
   pinMode(configPIN, INPUT);
-  pinMode(RelaisPIN, OUTPUT);
+//  pinMode(configWifiPIN, INPUT);
+  pinMode(RelayPIN, OUTPUT);
   pinMode(GatewayRelayPin, OUTPUT);
-  digitalWrite(GatewayRelayPin, 1);   // power on gateway
+ // pinMode(GatewayConfigPin, OUTPUT);
   Wire.begin();
   RTC.begin();
   DateTime now = RTC.now();
@@ -156,12 +189,6 @@ void setup() {
   lcd.print(now.minute());
   lcd.setCursor(0, 1);
 #if defined(debugOn)
-  Serial.println(eepromVersionAddr);
-  Serial.println(eepromTemperatureListAddr);
-  Serial.println(eepromDS1820Addr);
-  Serial.println(eepromRegistersAddr);
-  Serial.println(eepromLCDAddr);
-  Serial.println(eepromScheduleAddr);
   Serial.print(now.year(), DEC);
   Serial.print('/');
   Serial.print(now.month(), DEC);
@@ -171,39 +198,86 @@ void setup() {
   Serial.print(now.hour(), DEC);
   Serial.print(':');
   Serial.println(now.minute(), DEC);
-  Serial.println(updateClockCycle);
 #endif
+
+  digitalWrite(GatewayRelayPin, 0);   // power on gateway NC
+  /*
+     digitalWrite(GatewayConfigPin, !digitalRead(configWifiPIN));   // power on gateway NC relay
+    if (digitalRead(configWifiPIN))
+    {
+      Serial.begin(38400);
+      Serial.println("ConfigWifi Mode");
+      ConfigWifi();
+      Serial.end();
+    }
+    else {
+  */
+  GatewayLink.SerialBegin();
+  // }
   uint8_t retry = 0;
+  bitWrite(diagByte, diagDS1820, 1);
   while (retry < 5 && bitRead(diagByte, diagDS1820))
   {
     SearchDS1820Addr();
-#if defined(debugOn)
-    Serial.print("addr =");
-    for (int i = 0; i < 8; i++) {
-      Serial.write(' ');
-      Serial.print(ds1820Addr[i], HEX);
-    }
-    Serial.println();
-#endif
     if (ds1820Addr != 0x0000000000000000)
     {
       bitWrite(diagByte, diagDS1820, 0);
     }
     retry++;
   }
+  if (  bitRead(diagByte, diagDS1820))
+  {
+    runningMode = modeOff;
+  }
+#if defined(debugDS1820)
+  Serial.print("addr =");
+  for (int i = 0; i < 8; i++) {
+    Serial.write(' ');
+    Serial.print(ds1820Addr[i], HEX);
+  }
+  Serial.println();
+#endif
   if (digitalRead(configPIN))
   {
     Serial.print("InitConfiguration");
     InitConfiguration();
   }
-  delay(1000);
+
+  delay(20000);
   ReadTemperature();                // init the temperature table
+  
   irrecv.enableIRIn(); // Start the receiver
 }
 
 void loop() {
   delay(10);
   ReceiveIR();
+  if (bootMode > 0 && (millis() > completeBootDuration) && !  bitRead(diagByte, diagServerConnexion)) {
+    if (bootMode == 3) {
+#if defined(debugOn)
+      Serial.println("send temp");
+#endif
+      bootMode--;
+      SendTemperatureList();
+    }
+    if (bootMode == 2 && millis() > completeBootDuration + 30000) {
+#if defined(debugOn)
+      Serial.println("send reg");
+#endif
+      bootMode--;
+      SendRegisters();
+    }
+    if (bootMode == 1 && millis() > completeBootDuration + 60000) {
+      bootMode--;
+      uploadCurrentIdx = 0; // to start upload
+#if defined(debugOn)
+      Serial.println("start upload sched");
+#endif
+    }
+  }
+  if (millis() - lastReceivedTime > connexionTimeout) {
+    bitWrite(diagByte, diagServerConnexion, 1);
+  }
   if (millis() - LCDLastRefreshTime > LCDRefreshCycle)
   {
     LCDRefresh();
@@ -255,7 +329,7 @@ void loop() {
   if (digitalRead(GatewayReadyPin) == 1 && pendingRequest == 0x00 && ((millis() - lastUpdateClock > updateClockCycle ) || bitRead(diagByte, diagTimeUpToDate)))
   {
     SendTimeRequest();
-    pendingRequest = timeUpdate;
+    pendingRequest = timeUpdateRequest;
     pendingRequestClock = millis();
   }
   if (millis() - pendingRequestClock > pendingTimeout)
@@ -273,55 +347,58 @@ void loop() {
   if (millis() - PIDLastComputedTime > PIDComputeCycle)
   {
     PIDLastComputedTime = millis();
-    PIDCycle = (PIDCycle + 1) ;
-    sigmaPrec = sigmaE;
-    ComputePid();
+    //   PIDCycle = (PIDCycle + 1) ;
+    // sigmaPrec = sigmaE;
+    SwitchPID();
   }
   if (millis() - instructionRefreshTime > instructionRefreshCycle)
   {
     ComputeInstruction();
-    instructionRefreshTime=millis();
+    Executeinstruction();
+    instructionRefreshTime = millis();
   }
   if ((millis() - extTempRefreshTime > extTempRefreshCycle) || (extTempRefreshTime == 0 && digitalRead(GatewayReadyPin) == 1 && pendingRequest == 0x00))
   {
     SendExtTempRequest();
     extTempRefreshTime = millis();
   }
+  if (millis() - extTempUpdatedTime > extTempDuration)
+  {
+    bitWrite(diagByte, diagExtTemp, 1);
+  }
+
+  if (manualModeStartTime != 0 && millis() - manualModeStartTime > autoSaveModeDuration)
+  {
+    SaveCurrentMode();                // save the last running mode as default
+    manualModeStartTime = 0;
+  }
+
   if (bitRead(runningMode, manualAutoModeBit) && millis() - manualModeStartTime > manualMaxDuration) {
     bitWrite(runningMode, manualAutoModeBit, 0);
+    SendStatus(toAckFrame);
+    sendStatusTime = millis();
   }
-}
-
-void setParameters()
-{
-  if ( EEPROM.read(eepromVersionAddr) != eepromVersion)
-  {
-#if defined(debugOn)
-    Serial.print("invalid eeprom version:0x");
-    Serial.println(EEPROM.read(eepromVersionAddr), HEX);
-#endif
-    return;
-  }
-#if defined(debugOn)
-  Serial.print("unitGroup:0x");
-  Serial.print(EEPROM.read(eepromUnitIdAddr), HEX);
-  Serial.print(" unitId:0x");
-  Serial.println(EEPROM.read(eepromUnitIdAddr + 1), HEX);
-#endif
-  unitGroup = EEPROM.read(eepromUnitIdAddr);
-  unitId = EEPROM.read(eepromUnitIdAddr + 1);
-  for (uint8_t i = 0; i < tempListSize; i++)
-  {
-    if ( EEPROM.read(eepromTemperatureListAddr + i) != 0xff)
+  if (bitRead(runningMode, temporarilyHoldModeBit) && millis() > endOfTemporarilyHoldTime) {
+    bitWrite(runningMode, temporarilyHoldModeBit, 0);
+    if (bitRead(runningMode, manualAutoModeBit))
     {
-      temperatureList[i] = EEPROM.read(eepromTemperatureListAddr + i);
-#if defined(debugOn)
-      Serial.print(" t:");
-      Serial.print(temperatureList[i]);
+      tempInstruction = previousInstruction;
     }
-    Serial.println();
+    SendStatus(toAckFrame);
+    sendStatusTime = millis();
+  }
+  if (millis() - sendStatusTime > sendStatusCycle)
+  {
+    SendStatus(noAckFrame);
+    sendStatusTime = millis();
+  }
+  if ((uploadCurrentIdx >= 0 && uploadCurrentIdx <  scheduleSize) && (millis() - uploadlastTime > uploadIntervalDuration))
+  {
+#if defined(debugOn)
+    Serial.print(" upload sched:");
+    Serial.println(uploadCurrentIdx);
 #endif
-
+    UploadSchedul();
   }
 }
 
@@ -344,13 +421,19 @@ float AverageTemp()
   if (idx != 0)
   {
     return averageTemp / (idx);
+    bitWrite(diagByte, diagDS1820, 0);
   }
   else {
+    bitWrite(diagByte, diagDS1820, 1);
     return -noTempAvailable;
   }
 }
 
-
+void UploadSchedul() {
+  uploadlastTime = millis();
+  SendUnitarySchedule(uploadCurrentIdx);
+  uploadCurrentIdx++;
+}
 
 
 

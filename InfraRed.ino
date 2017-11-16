@@ -41,6 +41,7 @@ void ReceiveIR() {
     pendingCommand = modeWeek;
     newCommand = false;
     bitWrite(pendingCommand, updateModeBit, 1);
+    manualModeStartTime = millis();
   }
   if (results.value == IRSelectModeDay1 && newCommand) { //"-"
 #if defined(debugOn)
@@ -49,6 +50,7 @@ void ReceiveIR() {
     pendingCommand = modeDay1;
     newCommand = false;
     bitWrite(pendingCommand, updateModeBit, 1);
+    manualModeStartTime = millis();
   }
   if (results.value == IRSelectModeDay2 && newCommand) { //"-"
 #if defined(debugOn)
@@ -57,6 +59,7 @@ void ReceiveIR() {
     pendingCommand = modeDay2;
     newCommand = false;
     bitWrite(pendingCommand, updateModeBit, 1);
+    manualModeStartTime = millis();
   }
   if (results.value == IRSelectModeNotFreezing && newCommand) { //"-"
 #if defined(debugOn)
@@ -65,6 +68,7 @@ void ReceiveIR() {
     pendingCommand = modeNotFreezing;
     newCommand = false;
     bitWrite(pendingCommand, updateModeBit, 1);
+    manualModeStartTime = millis();
   }
 }
 

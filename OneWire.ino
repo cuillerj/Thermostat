@@ -31,10 +31,10 @@ void ReadTemperature()
   else if (cfg == 0x40) raw = raw & ~1; // 11 bit res, 375 ms
   //// default is 12 bit resolution, 750 ms conversion time
   celsius = (float)raw / 16.0;
-#if defined(debugOn)
+#if defined(debugDS1820)
   Serial.print("iT:");
   Serial.print(celsius);
-    Serial.print(";");
+  Serial.print(";");
 #endif
   lastTemp[averageTempCount % (lastTempSize)] =  celsius ;
   averageTempCount++;
@@ -42,9 +42,8 @@ void ReadTemperature()
 
 boolean SearchDS1820Addr()
 {
-  // uint8_t addr[8] = {0x28, 0xFF, 0x95, 0x71, 0xB5, 0x16, 0x03, 0x27};
   if ( !ds.search(ds1820Addr)) {
-#if defined(debugOn)
+#if defined(debugDS1820)
     Serial.println("No more addresses.");
     Serial.println();
 #endif
@@ -52,6 +51,5 @@ boolean SearchDS1820Addr()
     delay(250);
     return;
   }
-
 }
 
