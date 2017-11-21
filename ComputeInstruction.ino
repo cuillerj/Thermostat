@@ -23,7 +23,7 @@ void ComputeInstruction() {
   {
     case modeOff:    // mode off
       {
-        digitalWrite(RelayPIN, 1);
+        digitalWrite(RelayPIN, HeatingPowerOn);
         break;
       }
     case modeDay1:

@@ -70,5 +70,19 @@ void ReceiveIR() {
     bitWrite(pendingCommand, updateModeBit, 1);
     manualModeStartTime = millis();
   }
+  if (results.value == IRRebootGateway && newCommand) { //"-"
+#if defined(debugOn)
+    Serial.println(" reboot gateway");
+#endif
+    newCommand = false;
+    gatewayPowerOnStatus = !gatewayPowerOnStatus;
+    if (GatewayPowerOn == 1) {
+      digitalWrite(GatewayPowerPIN, gatewayPowerOnStatus);
+    }
+    else {
+      digitalWrite(GatewayPowerPIN, !gatewayPowerOnStatus);
+    }
+
+  }
 }
 

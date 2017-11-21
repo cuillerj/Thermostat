@@ -8,7 +8,10 @@ void LCDRefresh() {
   lcd.print(":");
   lcd.print(now.minute());
   lcd.setCursor(6, 1);
-  lcd.print(AverageTemp(), 1);
+  if (AverageTemp() != noTempAvailable) {
+    lcd.print(AverageTemp(), 1);
+  }
+
   lcd.setCursor(0, 1);
   if (runningMode != modeOff) {
     lcd.print(tempInstruction, 1);
@@ -41,7 +44,7 @@ void LCDRefresh() {
   else {
     lcd.print("-");
   }
-  if (extTemp != noTempAvailable)
+  if (!bitRead(diagByte, diagExtTemp))
   {
     lcd.print(abs(extTemp)); // meteo
   }
@@ -52,7 +55,7 @@ void LCDRefresh() {
     case 0:
       if (diagByte != 0x00) {
         lcd.blink();
-        lcd.print(" err:0x");
+        lcd.print(" Diag:0x");
         lcd.print(diagByte, HEX);
       }
       else {

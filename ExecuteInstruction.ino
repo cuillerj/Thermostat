@@ -6,7 +6,9 @@ void Executeinstruction() {
   if (thermostatRegister[thresholdPIDRegister] != 255) {      // test PID usage
     ComputePid();
     if (AverageTemp() != 0) {
-      if (millis() - timeSwitchOnOff > hysteresisDelay)      // temps mini entre 2 changements de relais on off pour eviter histerersis
+      unsigned long deltaTime = thermostatRegister[hysteresisDelayRegister];
+      deltaTime = deltaTime * 6000;
+      if (millis() - timeSwitchOnOff > deltaTime)    // temps mini entre 2 changements de relais on off pour eviter histerersis
       {
         if (windowSize > thresholdPID && statPID == 0x00)
         {
@@ -16,7 +18,7 @@ void Executeinstruction() {
 #endif
           statPID = 0x01;
           timeSwitchOnOff = millis();
-          digitalWrite(RelayPIN, HIGH);
+          digitalWrite(RelayPIN, HeatingPowerOn);
           relayPinStatus = true;
           refTempRelayOn = AverageTemp();         // save temperature to check increase
           return;
@@ -29,11 +31,18 @@ void Executeinstruction() {
 #endif
           statPID = 0x00;
           timeSwitchOnOff = millis();
-          digitalWrite(RelayPIN, LOW);
+          digitalWrite(RelayPIN, HeatingPowerOff);
           relayPinStatus = false;
           return;
         }
       }
+      else{
+         #if defined(debugOn)
+          Serial.print("wait for hysteresis:");
+          Serial.println(thermostatRegister[hysteresisDelayRegister]);     
+      }
+
+#endif
     }
   }
   else  {
@@ -42,7 +51,7 @@ void Executeinstruction() {
 #if defined(debugOn)
         Serial.println("1on");
 #endif
-        digitalWrite(RelayPIN, HIGH);
+        digitalWrite(RelayPIN, HeatingPowerOn);
         relayPinStatus = true;
         timeSwitchOnOff = millis();
         refTempRelayOn = AverageTemp();         // save temperature to check increase
@@ -52,7 +61,7 @@ void Executeinstruction() {
 #if defined(debugOn)
         Serial.println("1of");
 #endif
-        digitalWrite(RelayPIN, LOW);
+        digitalWrite(RelayPIN, HeatingPowerOff);
         relayPinStatus = false;
 
         //       tempRefRelaisOn = 0;

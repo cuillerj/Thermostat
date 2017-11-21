@@ -10,10 +10,10 @@ void ExecuteCommand()
     runningMode = pendingCommand & 0x07;
     if (runningMode == modeOff)
     {
-      digitalWrite(GatewayRelayPin, 0);
+      digitalWrite(RelayPIN, HeatingPowerOff);
     }
     else {
-      digitalWrite(GatewayRelayPin, 1);
+      digitalWrite(RelayPIN, HeatingPowerOn);
     }
   }
   if bitRead(pendingCommand, updateTemperatureBit)

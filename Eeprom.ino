@@ -101,6 +101,8 @@ void InitConfiguration()
   WriteByte(eepromRegistersAddr + KiPIDRegister, KiPID);
   WriteByte(eepromRegistersAddr + KdPIDRegister, KpdPID);
   WriteByte(eepromRegistersAddr + thresholdPIDRegister, thresholdPID);
+  WriteByte(eepromRegistersAddr + PIDCycleRegister, PIDCyleDelay);
+  WriteByte(eepromRegistersAddr + hysteresisDelayRegister, hysteresisDelay);
   SaveSchedul();
 #if defined(debugEeprom)
   Serial.println("end init eeprom");
@@ -136,6 +138,8 @@ void SaveRegisters() {
   WriteByte(eepromRegistersAddr + KiPIDRegister, thermostatRegister[KiPIDRegister]);
   WriteByte(eepromRegistersAddr + KdPIDRegister, thermostatRegister[KdPIDRegister]);
   WriteByte(eepromRegistersAddr + thresholdPIDRegister, thermostatRegister[thresholdPIDRegister]);
+  WriteByte(eepromRegistersAddr + PIDCycleRegister, thermostatRegister[PIDCycleRegister]);
+  WriteByte(eepromRegistersAddr + hysteresisDelayRegister, thermostatRegister[hysteresisDelayRegister]);
 }
 void SaveSchedul() {
   for (int i = 0; i < scheduleSize; i++) {

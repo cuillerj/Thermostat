@@ -36,7 +36,7 @@ int retryCount = 0;            // number of retry for sending
 uint8_t pendingRequest;
 uint8_t gatewayStatus = 0x00;    // 0x00 not ready  0x01 ready GPIO on wait boot completed 0x02 ready
 boolean securityOn = false;
-
+boolean gatewayPowerOnStatus = false;
 #include <thermostatDefines.h> // contient les parametres de config initiale
 #include <thermostatInstructions.h> // contient les parametres de config initiale
 #include <thermostatSchedule.h> // contient les parametres de schedull initiale
@@ -62,7 +62,6 @@ uint8_t diagByte = diagInitMask;
 uint8_t bootMode = bootStepsNumber;
 uint8_t prevDiagByte = diagByte;
 boolean relayPinStatus = false;
-
 int uploadCurrentIdx = -1;
 
 /*
@@ -107,9 +106,9 @@ int sigmaPrec = 99999; //
 int sigmaE = 0;
 int windowSize = 0;
 uint8_t statPID = 0x00; // statut resultat du PID
-uint8_t switchPID = 0x00;
 /*
    timers
+   due to the unsigned long limitation the timers behaviour will be suspended for there value every 50 days without major impacts
 */
 
 #define pendingTimeout 60000
@@ -120,16 +119,16 @@ uint8_t switchPID = 0x00;
 #define LCDRefreshCycle 5000
 #define instructionRefreshCycle 15000
 #define extTempRefreshCycle 300000
-#define manualMaxDuration 7200000    //2h
+#define manualMaxDuration 5400000    // 1h30
 #define extTempDuration 10800000     //3h
 #define autoSaveModeDuration 43200000    // 24h
-#define hysteresisDelay 120000
+//#define hysteresisDelay 120000
 #define PIDCyclDuration 120000
 #define sendStatusCycle 300000
 #define completeBootDuration 180000
 #define uploadIntervalDuration 10000
 #define connexionTimeout 1800000  // 30mn
-
+#define gatewayPowerOnCycle 300000
 unsigned long durationSincegatewayReady;  //
 unsigned long lastUpdateClock;
 unsigned long pendingRequestClock;
@@ -150,6 +149,7 @@ unsigned long sendStatusTime;
 unsigned long uploadlastTime;
 unsigned long lastReceivedTime;
 unsigned long endOfTemporarilyHoldTime;
+unsigned long lastGatewayPowerOnTime;
 #define MonthList "JanFebMarAprMayJunJulAugSepOctNovDec"  // do not change can not be localized
 RTC_DS1307 RTC;
 LiquidCrystal_I2C lcd(LCDAddr, LCDChars, LCDLines); // set the LCD address to 0x27 for a 16 chars and 2 line display
@@ -172,13 +172,15 @@ void setup() {
   Serial.begin(38400);
 #endif
   LoadParameters();
-  pinMode(GatewayReadyPin, INPUT);
+  pinMode(GatewayReadyPIN, INPUT);
   pinMode(InfraRedPIN, INPUT);
   pinMode(configPIN, INPUT);
-//  pinMode(configWifiPIN, INPUT);
+  //  pinMode(configWifiPIN, INPUT);
   pinMode(RelayPIN, OUTPUT);
-  pinMode(GatewayRelayPin, OUTPUT);
- // pinMode(GatewayConfigPin, OUTPUT);
+  pinMode(DiagPIN, OUTPUT);
+  pinMode(GatewayPowerPIN, OUTPUT);
+  gatewayPowerOnStatus = true;
+  // pinMode(GatewayConfigPin, OUTPUT);
   Wire.begin();
   RTC.begin();
   DateTime now = RTC.now();
@@ -198,9 +200,10 @@ void setup() {
   Serial.print(now.hour(), DEC);
   Serial.print(':');
   Serial.println(now.minute(), DEC);
+
 #endif
 
-  digitalWrite(GatewayRelayPin, 0);   // power on gateway NC
+
   /*
      digitalWrite(GatewayConfigPin, !digitalRead(configWifiPIN));   // power on gateway NC relay
     if (digitalRead(configWifiPIN))
@@ -212,8 +215,8 @@ void setup() {
     }
     else {
   */
-  GatewayLink.SerialBegin();
-  // }
+  // GatewayLink.SerialBegin();
+
   uint8_t retry = 0;
   bitWrite(diagByte, diagDS1820, 1);
   while (retry < 5 && bitRead(diagByte, diagDS1820))
@@ -243,14 +246,47 @@ void setup() {
     InitConfiguration();
   }
 
-  delay(20000);
+  delay(15000);
   ReadTemperature();                // init the temperature table
-  
+  digitalWrite(GatewayPowerPIN, GatewayPowerOn);   // power on gateway NC*
+  bitWrite(diagByte,diagTempRampup,0);
+  gatewayPowerOnStatus = true;
   irrecv.enableIRIn(); // Start the receiver
 }
 
 void loop() {
   delay(10);
+  if (prevDiagByte != diagByte) {
+    NewEvents();
+  }
+  if (digitalRead(GatewayReadyPIN))
+  {
+    bitWrite(diagByte, diagGatewayReady, 0);
+  }
+  else {
+    bitWrite(diagByte, diagGatewayReady, 1);
+  }
+  if (diagByte != 0x00) {
+    digitalWrite(DiagPIN, 1);
+  }
+  else {
+    digitalWrite(DiagPIN, 0);
+  }
+  if (digitalRead(GatewayReadyPIN) && !GatewayLink.SerialActive())
+  {
+#if defined(debugConnection)
+    Serial.println("Start serial link");
+#endif
+    GatewayLink.SerialBegin();
+  }
+  if (!digitalRead(GatewayReadyPIN) && GatewayLink.SerialActive())
+  {
+#if defined(debugConnection)
+    Serial.println("End serial link");
+#endif
+    GatewayLink.SerialEnd();
+    lastGatewayPowerOnTime = millis();
+  }
   ReceiveIR();
   if (bootMode > 0 && (millis() > completeBootDuration) && !  bitRead(diagByte, diagServerConnexion)) {
     if (bootMode == 3) {
@@ -275,6 +311,7 @@ void loop() {
 #endif
     }
   }
+
   if (millis() - lastReceivedTime > connexionTimeout) {
     bitWrite(diagByte, diagServerConnexion, 1);
   }
@@ -290,7 +327,7 @@ void loop() {
   /*
        send and receive loop
   */
-  if (digitalRead(GatewayReadyPin) == 1) {
+  if (GatewayLink.SerialActive()) {
     // ***  keep in touch with the server
     int getSerial = GatewayLink.Serial_have_message();  // check if we have received a message
     if (getSerial > 0)                                  // we got a message
@@ -325,17 +362,37 @@ void loop() {
       retryCount = 0;
       pendingAckSerial = 0x00;
     }
+    if ( pendingRequest == 0x00 && ((millis() - lastUpdateClock > updateClockCycle ) || bitRead(diagByte, diagTimeUpToDate)))
+    {
+      SendTimeRequest();
+      pendingRequest = timeUpdateRequest;
+      pendingRequestClock = millis();
+    }
+    if (millis() - pendingRequestClock > pendingTimeout)
+    {
+      pendingRequest = 0x00;
+    }
   }
-  if (digitalRead(GatewayReadyPin) == 1 && pendingRequest == 0x00 && ((millis() - lastUpdateClock > updateClockCycle ) || bitRead(diagByte, diagTimeUpToDate)))
-  {
-    SendTimeRequest();
-    pendingRequest = timeUpdateRequest;
-    pendingRequestClock = millis();
+  else {
+    if (millis() - lastGatewayPowerOnTime > gatewayPowerOnCycle && millis() - lastGatewayPowerOnTime < 2 * gatewayPowerOnCycle && gatewayPowerOnStatus)
+    {
+      digitalWrite(GatewayPowerPIN, GatewayPowerOff);
+      gatewayPowerOnStatus = false;
+#if defined(debugConnection)
+      Serial.println("Power off gateway");
+#endif
+    }
+    if (millis() - lastGatewayPowerOnTime >= 2 * gatewayPowerOnCycle)
+    {
+      digitalWrite(GatewayPowerPIN, GatewayPowerOn);
+      lastGatewayPowerOnTime = millis();
+      gatewayPowerOnStatus = true;
+#if defined(debugConnection)
+      Serial.println("Power on gateway");
+#endif
+    }
   }
-  if (millis() - pendingRequestClock > pendingTimeout)
-  {
-    pendingRequest = 0x00;
-  }
+
   if (millis() - temperatureLastReadTime > temperatureReadCycle)
   {
     ReadTemperature();
@@ -344,8 +401,14 @@ void loop() {
     Serial.println(AverageTemp());
 #endif
   }
-  if (millis() - PIDLastComputedTime > PIDComputeCycle)
+  unsigned long deltaTime = thermostatRegister[PIDCycleRegister];
+  deltaTime = deltaTime * 6000;
+
+  if (millis() - PIDLastComputedTime > deltaTime)
   {
+#if defined(debugOn)
+    Serial.println("refresh PID data");
+#endif
     PIDLastComputedTime = millis();
     //   PIDCycle = (PIDCycle + 1) ;
     // sigmaPrec = sigmaE;
@@ -357,7 +420,7 @@ void loop() {
     Executeinstruction();
     instructionRefreshTime = millis();
   }
-  if ((millis() - extTempRefreshTime > extTempRefreshCycle) || (extTempRefreshTime == 0 && digitalRead(GatewayReadyPin) == 1 && pendingRequest == 0x00))
+  if ((millis() - extTempRefreshTime > extTempRefreshCycle) || (extTempRefreshTime == 0 && digitalRead(GatewayReadyPIN) == 1 && pendingRequest == 0x00))
   {
     SendExtTempRequest();
     extTempRefreshTime = millis();
@@ -369,7 +432,7 @@ void loop() {
 
   if (manualModeStartTime != 0 && millis() - manualModeStartTime > autoSaveModeDuration)
   {
-    SaveCurrentMode();                // save the last running mode as default
+    SaveCurrentMode();                // save the current running mode as default
     manualModeStartTime = 0;
   }
 
@@ -425,7 +488,7 @@ float AverageTemp()
   }
   else {
     bitWrite(diagByte, diagDS1820, 1);
-    return -noTempAvailable;
+    return noTempAvailable;
   }
 }
 
@@ -436,7 +499,12 @@ void UploadSchedul() {
 }
 
 
-
+void   NewEvents()
+{
+  prevDiagByte = diagByte;
+  SendStatus(toAckFrame);
+  sendStatusTime = millis();
+}
 
 
 
