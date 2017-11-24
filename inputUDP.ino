@@ -127,9 +127,9 @@ void TraitInput(uint8_t cmdInput) {
         }
       case scheduleUpdateRequest:   // schedule update request
         {
-          uint8_t scheduleID = GatewayLink.DataInSerial[1] - firstScheduleIndicatorPosition;  // translation station indicator position to schedule position
+          uint8_t scheduleID = GatewayLink.DataInSerial[1];  // translation station indicator position to schedule position
           Schedule[scheduleID] = GatewayLink.DataInSerial[2];
-          SendUnitarySchedule(scheduleID + 50);
+          SendUnitarySchedule(scheduleID );
           break;
         }
 
@@ -139,7 +139,15 @@ void TraitInput(uint8_t cmdInput) {
           SendStatus(toAckFrame);
           break;
         }
-
+      case tracePIDRequest:   // set mode request
+        {
+#if defined(debugOn)
+          Serial.print("tracePIDRequest:");
+          Serial.println(GatewayLink.DataInSerial[firstDataBytePosition],HEX);
+#endif
+          PIDRequest = GatewayLink.DataInSerial[firstDataBytePosition];
+          break;
+        }
       case setTemporarilyHoldRequest:   // set mode request
         {
           bitWrite(runningMode, temporarilyHoldModeBit, 1);
@@ -177,14 +185,20 @@ void TraitInput(uint8_t cmdInput) {
         }
       case updateTemperatureRequest:   // set temperature instrcution
         {
+#if defined(debugOn)
+          Serial.print("updateTemperatureRequest:");
+          Serial.print(GatewayLink.DataInSerial[firstDataBytePosition]);
+          Serial.print(" >");
+          Serial.println(GatewayLink.DataInSerial[firstDataBytePosition + 1]);
+#endif
           if (GatewayLink.DataInSerial[firstDataBytePosition] >= 0 && GatewayLink.DataInSerial[firstDataBytePosition] < tempListSize)
           {
-            if (GatewayLink.DataInSerial[firstDataBytePosition + 1] <= thermostatRegister[maximumTemperatureRegister] && GatewayLink.DataInSerial[firstDataBytePosition + 1] >= minimumTemperature)
+            if ((GatewayLink.DataInSerial[firstDataBytePosition + 1] <= thermostatRegister[maximumTemperatureRegister]) && (GatewayLink.DataInSerial[firstDataBytePosition + 1] >= minimumTemperature))
             {
               temperatureList[GatewayLink.DataInSerial[firstDataBytePosition]] = GatewayLink.DataInSerial[firstDataBytePosition + 1];
             }
           }
-          SendStatus(toAckFrame);
+          SendTemperatureList();
           break;
         }
       case updateRegisterRequest:   // set register value
@@ -199,7 +213,31 @@ void TraitInput(uint8_t cmdInput) {
           {
             thermostatRegister[GatewayLink.DataInSerial[firstDataBytePosition]] = GatewayLink.DataInSerial[firstDataBytePosition + 1];
           }
-          SendRegister(GatewayLink.DataInSerial[firstDataBytePosition]);
+          SendRegisters();
+          break;
+        }
+      case uploadScheduleRequest:   // set register value
+        {
+#if defined(debugOn)
+          Serial.println("uploadScheduleRequest");
+#endif
+          uploadCurrentIdx = 0; // to start upload
+          break;
+        }
+      case uploadTemperatures:   // set register value
+        {
+#if defined(debugOn)
+          Serial.println("uploadTemperatures");
+#endif
+          SendTemperatureList();
+          break;
+        }
+      case uploadRegisters:   // set register value
+        {
+#if defined(debugOn)
+          Serial.println("uploadRegisters");
+#endif
+          SendRegisters();
           break;
         }
       case updateSchedulRequest:   // set schedul instrcution
@@ -217,7 +255,7 @@ void TraitInput(uint8_t cmdInput) {
               Schedule[GatewayLink.DataInSerial[firstDataBytePosition]] = GatewayLink.DataInSerial[firstDataBytePosition + 1];
             }
           }
-          SendUnitarySchedule(GatewayLink.DataInSerial[firstDataBytePosition] + firstScheduleIndicatorPosition);
+          SendUnitarySchedule(GatewayLink.DataInSerial[firstDataBytePosition]);
           break;
         }
       case writeEepromRequest:   // write eeprom

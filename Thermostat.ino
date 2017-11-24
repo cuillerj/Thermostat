@@ -6,6 +6,7 @@
 #define debugOn true     // can only be set with ATmega2560 or ATmega1280
 #define debugDS1820 true
 #define debugEeprom true
+#define debugPID true
 /*
    V0 refonte en cours de pilotage chaudiere (   remplacement de la communication RF par WIFI gateway ESP8266,   suppression du module DHT, ajout d'une fonction ecriture eeprom,
    prevoir traiter info event externes (alarme, ouverture porte & fenetre...)...
@@ -63,6 +64,7 @@ uint8_t bootMode = bootStepsNumber;
 uint8_t prevDiagByte = diagByte;
 boolean relayPinStatus = false;
 int uploadCurrentIdx = -1;
+boolean PIDRequest = false;
 
 /*
     commands
@@ -105,7 +107,7 @@ uint8_t PIDCycle = 0x00;
 int sigmaPrec = 99999; //
 int sigmaE = 0;
 int windowSize = 0;
-uint8_t statPID = 0x00; // statut resultat du PID
+//uint8_t statPID = 0x00; // statut resultat du PID
 /*
    timers
    due to the unsigned long limitation the timers behaviour will be suspended for there value every 50 days without major impacts
@@ -305,10 +307,12 @@ void loop() {
     }
     if (bootMode == 1 && millis() > completeBootDuration + 60000) {
       bootMode--;
+      /*;
       uploadCurrentIdx = 0; // to start upload
 #if defined(debugOn)
       Serial.println("start upload sched");
 #endif
+*/
     }
   }
 

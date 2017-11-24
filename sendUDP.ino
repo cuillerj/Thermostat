@@ -7,13 +7,15 @@ void SendUnitarySchedule(uint8_t scheduleID)
 
   GatewayLink.PendingDataReqSerial[4] = firstScheduleIndicatorPosition + scheduleID; //  translation from schedule poisition to station indicator position
   GatewayLink.PendingDataReqSerial[5] = Schedule[scheduleID];
+  GatewayLink.PendingDataReqSerial[6] = 0x00;
   FormatFrame(responseFrame, toAckFrame, 0x06);
 }
 void SendRegister(uint8_t registerId)
 {
   GatewayLink.PendingDataReqSerial[3] = registerResponse;
   GatewayLink.PendingDataReqSerial[4] = registerId; //
-  GatewayLink.PendingDataReqSerial[5] = thermostatRegister[GatewayLink.DataInSerial[registerId]];
+  GatewayLink.PendingDataReqSerial[5] = thermostatRegister[registerId];
+  GatewayLink.PendingDataReqSerial[6] = 0x00;
   FormatFrame(responseFrame, toAckFrame, 0x06);
 }
 void SendRegisters()
@@ -31,7 +33,10 @@ void SendRegisters()
   GatewayLink.PendingDataReqSerial[13] = thermostatRegister[6]; //
   GatewayLink.PendingDataReqSerial[14] = 0x00;
   GatewayLink.PendingDataReqSerial[15] = thermostatRegister[7]; //
-  FormatFrame(responseFrame, toAckFrame, 0x10);
+  GatewayLink.PendingDataReqSerial[16] = thermostatRegister[8]; //
+  GatewayLink.PendingDataReqSerial[17] = 0x00;
+  GatewayLink.PendingDataReqSerial[18] = thermostatRegister[9]; //
+  FormatFrame(responseFrame, toAckFrame, 0x13);
 }
 void SendTemperatureList()
 {
@@ -60,7 +65,32 @@ void SendStatus(boolean ack)
   GatewayLink.PendingDataReqSerial[13] = securityOn;
   FormatFrame(responseFrame, ack, 0x0e);
 }
+void SendPID()
+{
+  GatewayLink.PendingDataReqSerial[3] = sendPIDResponse;
+  GatewayLink.PendingDataReqSerial[4] = relayPinStatus;
+  GatewayLink.PendingDataReqSerial[5] = 0x00;
+  GatewayLink.PendingDataReqSerial[6] = uint8_t(tempInstruction * 10);
+  GatewayLink.PendingDataReqSerial[7] = uint8_t(AverageTemp() * 10);
+  if (windowSize >= 0)
+  {
+    GatewayLink.PendingDataReqSerial[8] = 0x2b;
+  }
+  else {
+    GatewayLink.PendingDataReqSerial[8] = 0x2d;
+  }
+  GatewayLink.PendingDataReqSerial[9] = uint8_t(abs(windowSize) / 256);
+  GatewayLink.PendingDataReqSerial[10] = uint8_t(abs(windowSize));
+  GatewayLink.PendingDataReqSerial[11] = 0x00;
+  GatewayLink.PendingDataReqSerial[12] = uint8_t(PIDCycle);
+  for (int i = 0; i <  min(PIDDataSize, 6); i++)
+  {
+    GatewayLink.PendingDataReqSerial[2 * i + 13] = 0x00;
+    GatewayLink.PendingDataReqSerial[2 * i + 14] = dataPID[i];
+  }
 
+  FormatFrame(responseFrame, noAckFrame, 0x19);
+}
 void SendTimeRequest()
 {
   /*
@@ -88,14 +118,15 @@ void FormatFrame(boolean request, boolean toAck, uint8_t frameLen)
   GatewayLink.PendingReqSerial = PendingReqRefSerial;
   if (request) {
     bitWrite(GatewayLink.PendingReqSerial, requestFrameBit, 1);
-    if (toAck) {
-      bitWrite(GatewayLink.PendingReqSerial, toAcknoledgeBit, 1);
-    }
   }
   else {
-    if (toAck) {
-      bitWrite(GatewayLink.PendingReqSerial, ackBit, 1);
-    }
+    bitWrite(GatewayLink.PendingReqSerial, requestFrameBit, 0);
+  }
+  if (toAck) {
+    bitWrite(GatewayLink.PendingReqSerial, toAcknoledgeBit, 1);
+  }
+  else {
+    bitWrite(GatewayLink.PendingReqSerial, toAcknoledgeBit, 0);
   }
   GatewayLink.PendingDataReqSerial[0] = unitGroup;
   GatewayLink.PendingDataReqSerial[1] = unitId;

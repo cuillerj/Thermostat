@@ -2,7 +2,7 @@ void ComputePid()
 {
   if (dataPID[0] == 0 && AverageTemp() != noTempAvailable) // first time init dataPID
   {
-#if defined(debugOn)
+#if defined(debugPID)
     Serial.println("init PID Data");
 #endif
     for (int i = 0; i < PIDDataSize; i++)
@@ -15,7 +15,7 @@ void ComputePid()
   {
     dataPID[PIDCycle % PIDDataSize] = int(AverageTemp() * 10);
     int target = int(tempInstruction * 10);
-#if defined(debugOn)
+#if defined(debugPID)
     Serial.print("PID cycle:");
     Serial.print(PIDCycle % PIDDataSize);
     Serial.print(" data:");
@@ -35,7 +35,7 @@ void ComputePid()
     int derivativeTerm = ((sigmaE - sigmaPrec) * thermostatRegister[KdPIDRegister]);
     int integralTerm = (sigmaE * KiPIDRegister) / 5;
     windowSize = (proportionalTerm + integralTerm + derivativeTerm) / 10;
-#if defined(debugOn)
+#if defined(debugPID)
     Serial.print(" window:");
     Serial.println(windowSize);
 #endif
@@ -44,6 +44,10 @@ void ComputePid()
 
 void SwitchPID ()
 {
-      PIDCycle = (PIDCycle + 1) % PIDDataSize;
-      sigmaPrec = sigmaE;
+  PIDCycle = (PIDCycle + 1) % PIDDataSize;
+  sigmaPrec = sigmaE;
+  if (PIDRequest)
+  {
+    SendPID();
+  }
 }
