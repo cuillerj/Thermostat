@@ -59,7 +59,12 @@ void SendStatus(boolean ack)
   GatewayLink.PendingDataReqSerial[7] = diagByte;
   GatewayLink.PendingDataReqSerial[8] = 0x00;
   GatewayLink.PendingDataReqSerial[9] = uint8_t(tempInstruction * 10);
-  GatewayLink.PendingDataReqSerial[10] = uint8_t(AverageTemp() * 10);
+  if (bitRead(diagByte, diagDS1820)) {
+    GatewayLink.PendingDataReqSerial[10] = 0x00;
+  }
+  else {
+    GatewayLink.PendingDataReqSerial[10] = uint8_t(AverageTemp() * 10);
+  }
   GatewayLink.PendingDataReqSerial[11] = 0x00;
   GatewayLink.PendingDataReqSerial[12] = ver;
   GatewayLink.PendingDataReqSerial[13] = securityOn;
@@ -71,7 +76,13 @@ void SendPID()
   GatewayLink.PendingDataReqSerial[4] = relayPinStatus;
   GatewayLink.PendingDataReqSerial[5] = 0x00;
   GatewayLink.PendingDataReqSerial[6] = uint8_t(tempInstruction * 10);
-  GatewayLink.PendingDataReqSerial[7] = uint8_t(AverageTemp() * 10);
+  if (bitRead(diagByte, diagDS1820)) {
+    GatewayLink.PendingDataReqSerial[7] = 0x00;
+  }
+  else {
+    GatewayLink.PendingDataReqSerial[7] = uint8_t(AverageTemp() * 10);
+  }
+
   if (windowSize >= 0)
   {
     GatewayLink.PendingDataReqSerial[8] = 0x2b;
@@ -148,6 +159,13 @@ void SendAckFrame()
   GatewayLink.PendingDataReqSerial[0] = unitGroup;
   GatewayLink.PendingDataReqSerial[1] = unitId;
   GatewayLink.PendingDataReqSerial[3] = GatewayLink.DataInSerial[firstDataBytePosition];
-  GatewayLink.PendingDataLenSerial = 0x06;
+  GatewayLink.PendingDataReqSerial[4] = 0x00;
+  GatewayLink.PendingDataReqSerial[5] = 0x00;
+  GatewayLink.PendingDataReqSerial[6] = CRC8(GatewayLink.PendingDataReqSerial , 5);
+  GatewayLink.PendingDataLenSerial = 0x07;
+#if defined(debugConnection)
+  Serial.print("format CRC:0x");
+  Serial.println(CRC8(GatewayLink.PendingDataReqSerial , 5), HEX);
+#endif
 }
 

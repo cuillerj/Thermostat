@@ -4,16 +4,17 @@ void ExecuteCommand()
   Serial.print("command:");
   Serial.print(pendingCommand, HEX);
 #endif
+
   if bitRead(pendingCommand, updateModeBit)
   {
     bitWrite(runningMode, manualAutoModeBit, 0);
     runningMode = pendingCommand & 0x07;
     if (runningMode == modeOff)
     {
-      digitalWrite(RelayPIN, HeatingPowerOff);
+      //  digitalWrite(RelayPIN, HeatingPowerOff);
     }
     else {
-      digitalWrite(RelayPIN, HeatingPowerOn);
+      //    digitalWrite(RelayPIN, HeatingPowerOn);
     }
   }
   if bitRead(pendingCommand, updateTemperatureBit)

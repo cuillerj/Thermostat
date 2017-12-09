@@ -3,13 +3,18 @@ void ReadTemperature()
   /*
      read DS1820 sensor and store value in lastTemp array
   */
+  if (bitRead(diagByte, diagDS1820))
+  {
+
+    return;
+  }
   temperatureLastReadTime = millis();
   uint8_t data[12];
   float celsius;
-  ds.reset();
+  boolean dsStat = ds.reset();
   ds.select(ds1820Addr);
   ds.write(0x44, 0);        // start conversion, with parasite power on at the end
-  // delay(750);     // maybe 750ms is enough
+  delay(750);
   // we might do a ds.depower() here, but the reset will take care of it.
 
   ds.reset();
@@ -31,13 +36,19 @@ void ReadTemperature()
   else if (cfg == 0x40) raw = raw & ~1; // 11 bit res, 375 ms
   //// default is 12 bit resolution, 750 ms conversion time
   celsius = (float)raw / 16.0;
-#if defined(debugDS1820)
+#if defined(debugDS1820)||defined(serialPrintForced)
   Serial.print("iT:");
   Serial.print(celsius);
   Serial.print(";");
 #endif
-  lastTemp[averageTempCount % (lastTempSize)] =  celsius ;
-  averageTempCount++;
+  if (dsStat)
+  {
+    lastTemp[averageTempCount % (lastTempSize)] =  celsius ;
+    averageTempCount++;
+  }
+  else {
+    bitWrite(diagByte, diagDS1820, 1);
+  }
 }
 
 boolean SearchDS1820Addr()
@@ -48,7 +59,7 @@ boolean SearchDS1820Addr()
     Serial.println();
 #endif
     ds.reset_search();
-    delay(250);
+    delay(500);
     return;
   }
 }

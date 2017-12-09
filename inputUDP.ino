@@ -77,7 +77,7 @@ void TraitInput(uint8_t cmdInput) {
             RTC.adjust(DateTime(DateToInit, TimeToInit));
             lastUpdateClock = millis();
             bitWrite(diagByte, diagTimeUpToDate, 0);
-#if defined(debugOn)
+#if defined(debugInput)
             Serial.print("set time ");
             DateTime now = RTC.now();
             Serial.print(now.year(), DEC);
@@ -104,7 +104,7 @@ void TraitInput(uint8_t cmdInput) {
           }
           bitWrite(diagByte, diagExtTemp, 0);
           extTempUpdatedTime = millis();
-#if defined(debugOn)
+#if defined(debugInput)
           Serial.print("ext temp: ");
           Serial.println(extTemp);
 #endif
@@ -139,11 +139,23 @@ void TraitInput(uint8_t cmdInput) {
           SendStatus(toAckFrame);
           break;
         }
+
+      case setInstruction:   // set instruction
+        {
+          if (runningMode != modeOff) {
+            bitWrite(runningMode, manualAutoModeBit, 1);
+            manualModeStartTime = millis();
+            tempInstruction = min(float(GatewayLink.DataInSerial[firstDataBytePosition]) / 10, float(thermostatRegister[maximumTemperatureRegister]) / 10);
+            tempInstruction = max(tempInstruction, float(minimumTemperature) / 10);
+          }
+          SendStatus(toAckFrame);
+          break;
+        }
       case tracePIDRequest:   // set mode request
         {
-#if defined(debugOn)
+#if defined(debugInput)
           Serial.print("tracePIDRequest:");
-          Serial.println(GatewayLink.DataInSerial[firstDataBytePosition],HEX);
+          Serial.println(GatewayLink.DataInSerial[firstDataBytePosition], HEX);
 #endif
           PIDRequest = GatewayLink.DataInSerial[firstDataBytePosition];
           break;
@@ -154,7 +166,7 @@ void TraitInput(uint8_t cmdInput) {
           previousInstruction = tempInstruction;
           unsigned long deltaTimemsec = (GatewayLink.DataInSerial[firstDataBytePosition]);
           endOfTemporarilyHoldTime = millis() + deltaTimemsec * 60000;
-#if defined(debugOn)
+#if defined(debugInput)
           Serial.print("millis/1000:");
           Serial.print(millis() / 1000);
           Serial.print(" wait:");
@@ -163,9 +175,10 @@ void TraitInput(uint8_t cmdInput) {
           SendStatus(toAckFrame);
           break;
         }
-      case setInstructionRequest:   // set temprature request
+      case setInstructionRequest:        // set temprature request
         {
           bitWrite(runningMode, manualAutoModeBit, 1);
+          manualModeStartTime = millis();
           tempInstruction = (float(GatewayLink.DataInSerial[firstDataBytePosition])) / 10;
           SendStatus(toAckFrame);
           break;
@@ -185,7 +198,7 @@ void TraitInput(uint8_t cmdInput) {
         }
       case updateTemperatureRequest:   // set temperature instrcution
         {
-#if defined(debugOn)
+#if defined(debugInput)
           Serial.print("updateTemperatureRequest:");
           Serial.print(GatewayLink.DataInSerial[firstDataBytePosition]);
           Serial.print(" >");
@@ -203,7 +216,7 @@ void TraitInput(uint8_t cmdInput) {
         }
       case updateRegisterRequest:   // set register value
         {
-#if defined(debugOn)
+#if defined(debugInput)
           Serial.print("updateRegisterRequest: id 0x");
           Serial.print(GatewayLink.DataInSerial[firstDataBytePosition], HEX);
           Serial.print(" value: 0x");
@@ -218,7 +231,7 @@ void TraitInput(uint8_t cmdInput) {
         }
       case uploadScheduleRequest:   // set register value
         {
-#if defined(debugOn)
+#if defined(debugInput)
           Serial.println("uploadScheduleRequest");
 #endif
           uploadCurrentIdx = 0; // to start upload
@@ -226,7 +239,7 @@ void TraitInput(uint8_t cmdInput) {
         }
       case uploadTemperatures:   // set register value
         {
-#if defined(debugOn)
+#if defined(debugInput)
           Serial.println("uploadTemperatures");
 #endif
           SendTemperatureList();
@@ -234,7 +247,7 @@ void TraitInput(uint8_t cmdInput) {
         }
       case uploadRegisters:   // set register value
         {
-#if defined(debugOn)
+#if defined(debugInput)
           Serial.println("uploadRegisters");
 #endif
           SendRegisters();
@@ -242,7 +255,7 @@ void TraitInput(uint8_t cmdInput) {
         }
       case updateSchedulRequest:   // set schedul instrcution
         {
-#if defined(debugOn)
+#if defined(debugInput)
           Serial.print("updateSchedulRequest: id 0x");
           Serial.print(GatewayLink.DataInSerial[firstDataBytePosition], HEX);
           Serial.print(" value: 0x");
@@ -264,34 +277,34 @@ void TraitInput(uint8_t cmdInput) {
 #define saveTemperaturesBit 1
 #define saveSchedulBit 2
 #define saveRegistersBit 3
-#if defined(debugOn)
+#if defined(debugInput)
           Serial.print("writeEepromRequest: param 0x");
           Serial.println(GatewayLink.DataInSerial[firstDataBytePosition], HEX);
 #endif
           if (bitRead(GatewayLink.DataInSerial[firstDataBytePosition], saveCurrentModeBit))
           {
-#if defined(debugOn)
+#if defined(debugInput)
             Serial.println("writeEeprom currentMode");
 #endif
             SaveCurrentMode();
           }
           if (bitRead(GatewayLink.DataInSerial[firstDataBytePosition], saveTemperaturesBit))
           {
-#if defined(debugOn)
+#if defined(debugInput)
             Serial.println("writeEeprom temperatures");
 #endif
             InitTemparatures();
           }
           if (bitRead(GatewayLink.DataInSerial[firstDataBytePosition], saveSchedulBit))
           {
-#if defined(debugOn)
+#if defined(debugInput)
             Serial.println("writeEeprom schedule");
 #endif
             SaveSchedul();
           }
           if (bitRead(GatewayLink.DataInSerial[firstDataBytePosition], saveRegistersBit))
           {
-#if defined(debugOn)
+#if defined(debugInput)
             Serial.println("writeEeprom registers");
 #endif
             SaveRegisters();

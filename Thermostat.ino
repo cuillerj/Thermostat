@@ -2,11 +2,19 @@
 #define Version "Th"
 #define ver 0x01 // version
 
-#define debugConnection true     // can only be set with ATmega2560 or ATmega1280
-#define debugOn true     // can only be set with ATmega2560 or ATmega1280
-#define debugDS1820 true
-#define debugEeprom true
-#define debugPID true
+//#define debugConnection true     // can only be set with ATmega2560 or ATmega1280
+//#define debugOn true     // can only be set with ATmega2560 or ATmega1280
+//#define debugExec true     // can only be set with ATmega2560 or ATmega1280
+//#define debugDS1820 true
+//#define debugEeprom true
+//#define debugPID true
+//#define debugBoot
+//#define debugInput
+//#define debugLcd
+
+//#define serialPrintForced
+boolean diagFlag = false;
+
 /*
    V0 refonte en cours de pilotage chaudiere (   remplacement de la communication RF par WIFI gateway ESP8266,   suppression du module DHT, ajout d'une fonction ecriture eeprom,
    prevoir traiter info event externes (alarme, ouverture porte & fenetre...)...
@@ -58,7 +66,9 @@ uint8_t thermostatRegister[registerSize] = {reactivity, sizeAnticipation, maximu
 /*
     diagnostics
 */
+uint8_t spar0 = 0x00;
 uint8_t diagByte = diagInitMask;
+uint8_t spar1 = 0x00;
 #define bootStepsNumber 3
 uint8_t bootMode = bootStepsNumber;
 uint8_t prevDiagByte = diagByte;
@@ -113,9 +123,10 @@ int windowSize = 0;
    due to the unsigned long limitation the timers behaviour will be suspended for there value every 50 days without major impacts
 */
 
-#define pendingTimeout 60000
-#define updateClockCycle 120000
-#define delayBetweenInfo 5000   // delay before sending new data to the server  
+#define pendingTimeout 60000           // no loner wait for answer to a request longer that this timer
+#define updateClockCycle 300000        // time request using this cycle
+#define updateClockLimit 900000        // limit duration without receiving time information over that time bit error is raised 
+#define delayBetweenInfo 5000         // delay before sending new data to the server  
 #define temperatureReadCycle 30000
 #define PIDComputeCycle 240000
 #define LCDRefreshCycle 5000
@@ -126,7 +137,7 @@ int windowSize = 0;
 #define autoSaveModeDuration 43200000    // 24h
 //#define hysteresisDelay 120000
 #define PIDCyclDuration 120000
-#define sendStatusCycle 300000
+#define sendStatusCycle 60000
 #define completeBootDuration 180000
 #define uploadIntervalDuration 10000
 #define connexionTimeout 1800000  // 30mn
@@ -170,7 +181,7 @@ void setup() {
      arduino to gateway serial link will be serial with Uno and serial2 with Mega
   */
 
-#if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)   // with mega serial remains available 
+#if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) || defined(serialPrintForced)   // with mega serial remains available 
   Serial.begin(38400);
 #endif
   LoadParameters();
@@ -180,6 +191,8 @@ void setup() {
   //  pinMode(configWifiPIN, INPUT);
   pinMode(RelayPIN, OUTPUT);
   pinMode(DiagPIN, OUTPUT);
+  digitalWrite(DiagPIN, 1);
+  pinMode(13, OUTPUT);
   pinMode(GatewayPowerPIN, OUTPUT);
   gatewayPowerOnStatus = true;
   // pinMode(GatewayConfigPin, OUTPUT);
@@ -202,62 +215,60 @@ void setup() {
   Serial.print(now.hour(), DEC);
   Serial.print(':');
   Serial.println(now.minute(), DEC);
-
 #endif
 
 
-  /*
-     digitalWrite(GatewayConfigPin, !digitalRead(configWifiPIN));   // power on gateway NC relay
-    if (digitalRead(configWifiPIN))
-    {
-      Serial.begin(38400);
-      Serial.println("ConfigWifi Mode");
-      ConfigWifi();
-      Serial.end();
-    }
-    else {
-  */
-  // GatewayLink.SerialBegin();
-
   uint8_t retry = 0;
-  bitWrite(diagByte, diagDS1820, 1);
-  while (retry < 5 && bitRead(diagByte, diagDS1820))
+  uint8_t retry2 = 0;
+  while ((retry < 50))
   {
+    retry2++;
     SearchDS1820Addr();
-    if (ds1820Addr != 0x0000000000000000)
+    if (ds1820Addr[0] != 0x00)
     {
       bitWrite(diagByte, diagDS1820, 0);
+      retry = 50;
+    }
+    else {
+      bitWrite(diagByte, diagDS1820, 1);
     }
     retry++;
   }
-  if (  bitRead(diagByte, diagDS1820))
-  {
-    runningMode = modeOff;
-  }
-#if defined(debugDS1820)
+
+#if defined(debugDS1820) || defined(serialPrintForced)
   Serial.print("addr =");
   for (int i = 0; i < 8; i++) {
     Serial.write(' ');
     Serial.print(ds1820Addr[i], HEX);
   }
   Serial.println();
+  Serial.println(retry2);
 #endif
+
   if (digitalRead(configPIN))
   {
-    Serial.print("InitConfiguration");
+    Serial.begin(38400);
+    digitalWrite(13, 1);
     InitConfiguration();
+    digitalWrite(13, 0);
   }
 
   delay(15000);
   ReadTemperature();                // init the temperature table
+
   digitalWrite(GatewayPowerPIN, GatewayPowerOn);   // power on gateway NC*
-  bitWrite(diagByte,diagTempRampup,0);
+  bitWrite(diagByte, diagTempRampup, 0);
   gatewayPowerOnStatus = true;
   irrecv.enableIRIn(); // Start the receiver
+#if defined(serialPrintForced)
+  Serial.println(diagByte, HEX);
+ // Serial.end();
+#endif
 }
 
 void loop() {
   delay(10);
+  //Serial.print(".");
   if (prevDiagByte != diagByte) {
     NewEvents();
   }
@@ -273,6 +284,10 @@ void loop() {
   }
   else {
     digitalWrite(DiagPIN, 0);
+  }
+  if (bitRead(diagByte, diagDS1820))
+  {
+    runningMode = modeOff;
   }
   if (digitalRead(GatewayReadyPIN) && !GatewayLink.SerialActive())
   {
@@ -292,14 +307,14 @@ void loop() {
   ReceiveIR();
   if (bootMode > 0 && (millis() > completeBootDuration) && !  bitRead(diagByte, diagServerConnexion)) {
     if (bootMode == 3) {
-#if defined(debugOn)
+#if defined(debugBoot)
       Serial.println("send temp");
 #endif
       bootMode--;
       SendTemperatureList();
     }
     if (bootMode == 2 && millis() > completeBootDuration + 30000) {
-#if defined(debugOn)
+#if defined(debugBoot)
       Serial.println("send reg");
 #endif
       bootMode--;
@@ -307,12 +322,7 @@ void loop() {
     }
     if (bootMode == 1 && millis() > completeBootDuration + 60000) {
       bootMode--;
-      /*;
-      uploadCurrentIdx = 0; // to start upload
-#if defined(debugOn)
-      Serial.println("start upload sched");
-#endif
-*/
+
     }
   }
 
@@ -372,6 +382,10 @@ void loop() {
       pendingRequest = timeUpdateRequest;
       pendingRequestClock = millis();
     }
+    if (millis() - lastUpdateClock > updateClockLimit)
+    {
+      bitWrite(diagByte, diagTimeUpToDate, 1);
+    }
     if (millis() - pendingRequestClock > pendingTimeout)
     {
       pendingRequest = 0x00;
@@ -400,7 +414,7 @@ void loop() {
   if (millis() - temperatureLastReadTime > temperatureReadCycle)
   {
     ReadTemperature();
-#if defined(debugOn)
+#if defined(debugDS1820)
     Serial.print("aT:");
     Serial.println(AverageTemp());
 #endif
@@ -476,14 +490,19 @@ float AverageTemp()
   */
   uint8_t idx = 0;
   float averageTemp = 0;
-  while (idx < lastTempSize)
+  boolean limitReached = false;
+
+  while ((idx < lastTempSize) && (limitReached == false))
   {
-    averageTemp = averageTemp + lastTemp[idx];
     if (lastTemp[idx] == 0)
     {
-      break;
+      limitReached = true;
     }
-    idx++;
+    else {
+      averageTemp = averageTemp + lastTemp[idx];
+      idx++;
+    }
+
   }
   if (idx != 0)
   {

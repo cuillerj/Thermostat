@@ -1,8 +1,12 @@
 void Executeinstruction() {
-#if defined(debugOn)
+#if defined(debugExec)
   Serial.print("Executeinstruction:");
   Serial.println(relayPinStatus);
 #endif
+  if (runningMode == modeOff)
+  {
+    return;
+  }
   if (thermostatRegister[thresholdPIDRegister] != 255) {      // test PID usage
     ComputePid();
     if (AverageTemp() != 0) {
@@ -12,7 +16,7 @@ void Executeinstruction() {
       {
         if (windowSize > thresholdPID && !relayPinStatus)
         {
-#if defined(debugOn)
+#if defined(debugExec)
           Serial.print("PID On:");
           Serial.println(windowSize);
 #endif
@@ -27,7 +31,7 @@ void Executeinstruction() {
         }
         if (windowSize <= thresholdPID && relayPinStatus)
         {
-#if defined(debugOn)
+#if defined(debugExec)
           Serial.print("PID Off:");
           Serial.println(windowSize);
 #endif
@@ -41,18 +45,17 @@ void Executeinstruction() {
         }
       }
       else {
-#if defined(debugOn)
+#if defined(debugExec)
         Serial.print("wait for hysteresis:");
         Serial.println(thermostatRegister[hysteresisDelayRegister]);
-      }
-
 #endif
+      }
     }
   }
   else  {
     if (AverageTemp() != 0) {
       if (AverageTemp() < tempInstruction - .2 && !relayPinStatus) {
-#if defined(debugOn)
+#if defined(debugExec)
         Serial.println("1on");
 #endif
         digitalWrite(RelayPIN, HeatingPowerOn);
@@ -62,7 +65,7 @@ void Executeinstruction() {
         return;
       }
       if (AverageTemp() > tempInstruction + .1 && relayPinStatus) {
-#if defined(debugOn)
+#if defined(debugExec)
         Serial.println("1of");
 #endif
         digitalWrite(RelayPIN, HeatingPowerOff);

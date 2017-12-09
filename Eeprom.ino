@@ -85,9 +85,9 @@ void InitConfiguration()
   /*
      must be run once during the installation
   */
-#if defined(debugEeprom)
+
   Serial.println("init eeprom... wait... ");
-#endif
+
   WriteByte(eepromVersionAddr, eepromVersion);
   WriteByte(eepromUnitIdAddr, unitGroup);
   WriteByte(eepromUnitIdAddr + 1, unitId);
@@ -104,9 +104,9 @@ void InitConfiguration()
   WriteByte(eepromRegistersAddr + PIDCycleRegister, PIDCyleDelay);
   WriteByte(eepromRegistersAddr + hysteresisDelayRegister, hysteresisDelay);
   SaveSchedul();
-#if defined(debugEeprom)
+
   Serial.println("end init eeprom");
-#endif
+  Serial.println("set config PIN off abd reboot");
   PrintEeprom();
 }
 void InitTemparatures()
