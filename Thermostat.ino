@@ -61,7 +61,7 @@ uint8_t pendingCommand = 0x00;
 /*
    registers
 */
-uint8_t thermostatRegister[registerSize] = {reactivity, sizeAnticipation, maximumTemperature, outHomeTemperatureDecrease, KpPID, KiPID, KpdPID, thresholdPID};
+uint8_t thermostatRegister[registerSize] = {reactivity, sizeAnticipation, maximumTemperature, outHomeTemperatureDecrease, KpPID, KiPID, KdPID, thresholdPID};
 
 /*
     diagnostics

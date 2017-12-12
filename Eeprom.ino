@@ -99,7 +99,7 @@ void InitConfiguration()
   WriteByte(eepromRegistersAddr + absenceTemperatureReductionRegister, outHomeTemperatureDecrease);
   WriteByte(eepromRegistersAddr + KpPIDRegister, KpPID);
   WriteByte(eepromRegistersAddr + KiPIDRegister, KiPID);
-  WriteByte(eepromRegistersAddr + KdPIDRegister, KpdPID);
+  WriteByte(eepromRegistersAddr + KdPIDRegister, KdPID);
   WriteByte(eepromRegistersAddr + thresholdPIDRegister, thresholdPID);
   WriteByte(eepromRegistersAddr + PIDCycleRegister, PIDCyleDelay);
   WriteByte(eepromRegistersAddr + hysteresisDelayRegister, hysteresisDelay);
