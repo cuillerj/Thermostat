@@ -25,17 +25,25 @@ void TraitInput(uint8_t cmdInput) {
   uint8_t inputCRC = GatewayLink.DataInSerial[GatewayLink.DataInSerial[lenBytePosition] - 1];
   uint8_t computeCRC = CRC8(&GatewayLink.DataInSerial[commandBytePosition] , GatewayLink.DataInSerial[lenBytePosition] - commandBytePosition - crcLen);
 #if defined(debugConnection)
-  Serial.print("frame len:");
+  Serial.println("receive ");
+  for (int i = 0; i <= min(GatewayLink.DataInSerial[lenBytePosition],30); i++)
+  {
+    Serial.print("0x");
+    Serial.print(GatewayLink.DataInSerial[i], HEX);
+    Serial.print("-");
+  }
+  Serial.println();
+  Serial.print("len:");
   Serial.print(GatewayLink.DataInSerial[lenBytePosition], HEX);
-  Serial.print(" in crc:");
+  Serial.print(" inCrc:");
   Serial.print(inputCRC, HEX);
-  Serial.print(" CRC:0x");
+  Serial.print(" expCrc:0x");
   Serial.println(computeCRC, HEX);
 #endif
   if (inputCRC != computeCRC)
   {
 #if defined(debugConnection)
-    Serial.println("crc error");
+    Serial.println("crcError");
 #endif
     return;
   }

@@ -1,4 +1,13 @@
+/*
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+Written by
 #define Version "Th"
 #define ver 0x01 // version
 
@@ -157,7 +166,7 @@ unsigned long extTempUpdatedTime;
 unsigned long manualModeStartTime = 0;
 unsigned long changeModeTime;
 unsigned long timeSwitchOnOff;
-unsigned long PIDCycleTime;
+//unsigned long PIDCycleTime;
 unsigned long sendStatusTime;
 unsigned long uploadlastTime;
 unsigned long lastReceivedTime;
@@ -346,16 +355,6 @@ void loop() {
     int getSerial = GatewayLink.Serial_have_message();  // check if we have received a message
     if (getSerial > 0)                                  // we got a message
     {
-#if defined(debugConnection)
-      Serial.println("receive something");
-      for (int i = 0; i <= 15; i++)
-      {
-        Serial.print("0x");
-        Serial.print(GatewayLink.DataInSerial[i], HEX);
-        Serial.print("-");
-      }
-      Serial.println();
-#endif
       TraitInput(GatewayLink.DataInSerial[receiveFlagPosition]);          // analyze the message
     }
     if (GatewayLink.PendingReqSerial != 0x00)           // check if we have a message to send (or a message currently sending)

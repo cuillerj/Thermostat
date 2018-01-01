@@ -148,7 +148,7 @@ void FormatFrame(boolean request, boolean toAck, uint8_t frameLen)
   GatewayLink.PendingDataReqSerial[frameLen] = 0x00;
   GatewayLink.PendingDataReqSerial[frameLen + 1] = CRC8(GatewayLink.PendingDataReqSerial , frameLen);
 #if defined(debugConnection)
-  Serial.print("format CRC:0x");
+  Serial.print("send CRC:0x");
   Serial.println(CRC8(GatewayLink.PendingDataReqSerial , frameLen), HEX);
 #endif
 }
