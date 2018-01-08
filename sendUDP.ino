@@ -58,12 +58,12 @@ void SendStatus(boolean ack)
   GatewayLink.PendingDataReqSerial[6] = runningMode;
   GatewayLink.PendingDataReqSerial[7] = diagByte;
   GatewayLink.PendingDataReqSerial[8] = 0x00;
-  GatewayLink.PendingDataReqSerial[9] = uint8_t(tempInstruction * 10);
+  GatewayLink.PendingDataReqSerial[9] = uint8_t(round(tempInstruction * 10));
   if (bitRead(diagByte, diagDS1820)) {
     GatewayLink.PendingDataReqSerial[10] = 0x00;
   }
   else {
-    GatewayLink.PendingDataReqSerial[10] = uint8_t(AverageTemp() * 10);
+    GatewayLink.PendingDataReqSerial[10] = uint8_t(round(AverageTemp() * 10));
   }
   GatewayLink.PendingDataReqSerial[11] = 0x00;
   GatewayLink.PendingDataReqSerial[12] = ver;
@@ -75,12 +75,12 @@ void SendPID()
   GatewayLink.PendingDataReqSerial[3] = sendPIDResponse;
   GatewayLink.PendingDataReqSerial[4] = relayPinStatus;
   GatewayLink.PendingDataReqSerial[5] = 0x00;
-  GatewayLink.PendingDataReqSerial[6] = uint8_t(tempInstruction * 10);
+  GatewayLink.PendingDataReqSerial[6] = uint8_t(round(tempInstruction * 10));
   if (bitRead(diagByte, diagDS1820)) {
     GatewayLink.PendingDataReqSerial[7] = 0x00;
   }
   else {
-    GatewayLink.PendingDataReqSerial[7] = uint8_t(AverageTemp() * 10);
+    GatewayLink.PendingDataReqSerial[7] = uint8_t(round(AverageTemp() * 10));
   }
 
   if (windowSize >= 0)
