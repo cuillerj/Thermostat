@@ -68,7 +68,9 @@ void SendStatus(boolean ack)
   GatewayLink.PendingDataReqSerial[11] = 0x00;
   GatewayLink.PendingDataReqSerial[12] = ver;
   GatewayLink.PendingDataReqSerial[13] = securityOn;
-  FormatFrame(responseFrame, ack, 0x0e);
+  GatewayLink.PendingDataReqSerial[14] = uint8_t(abs(schedulIndex) / 256);
+  GatewayLink.PendingDataReqSerial[15] = uint8_t(abs(schedulIndex));
+  FormatFrame(responseFrame, ack, 0x10);
 }
 void SendPID()
 {

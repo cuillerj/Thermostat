@@ -9,11 +9,13 @@
 
   Written by J Cuiller
 */
-/*
- * ajouter indicateur position dans schedule au status
- */
+/*  evolution a faire
+   ajouter indicateur position dans schedule au status
+   modifier le calcul anticipation pour eviter flip flop au moment de l'anticipation / retarder demarrage si ecart entre temp et expected faible ...
+
+*/
 #define Version "Th"
-#define ver 0x01 // version
+#define ver 0x02 // version
 
 //#define debugConnection true     // can only be set with ATmega2560 or ATmega1280
 //#define debugOn true     // can only be set with ATmega2560 or ATmega1280
@@ -106,7 +108,7 @@ float previousInstruction = tempInstruction;
 float refTempRelayOn;
 int prevTarget = 0;
 int extTemp = noTempAvailable;
-
+int schedulIndex = 0;
 /*
    temperature sensor
 */

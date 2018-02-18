@@ -2,7 +2,7 @@ void ComputeInstruction() {
   /*
      compute temperature request
   */
-  int schedulIndex = 0;
+
   DateTime now = RTC.now();
   if (bitRead(runningMode, temporarilyHoldModeBit))
   {
@@ -24,8 +24,8 @@ void ComputeInstruction() {
     case modeOff:    // mode off
       {
         digitalWrite(RelayPIN, HeatingPowerOff);
-        relayPinStatus=false;
-        tempInstruction=0;
+        relayPinStatus = false;
+        tempInstruction = 0;
         break;
       }
     case modeDay1:
@@ -92,7 +92,7 @@ void ComputeInstruction() {
 float AnticipationConsigne(int schedulIndex, boolean halfHour) {
 #define defaultExtTemp 10
 #define minReactivity 0.1
-#define adjustCoef 80
+#define adjustCoef 0.9
   int WorkMeteo = defaultExtTemp;
   uint8_t anticipWork[7];
   float SchedTemp;
@@ -147,9 +147,12 @@ float AnticipationConsigne(int schedulIndex, boolean halfHour) {
   int signdeltaTemp = (deltaTemp / abs(deltaTemp));
   float newReac = thermostatRegister[reactivityRegister];
   newReac = newReac / 100;
-  deltaTemp = ((deltaTemp * deltaTemp) * signdeltaTemp) / adjustCoef;
-  WorkReacChauff = max(newReac + deltaTemp , minReactivity);
-  // WorkReacChauff = (WorkReacChauff / 60000) / 2; // modif le 15/12/14 division par 2
+  float workCoef = adjustCoef;
+  if (deltaTemp > 0)
+  {
+    workCoef = 1 / adjustCoef;
+  }
+  WorkReacChauff = max(newReac + (newReac * deltaTemp / defaultExtTemp) * workCoef, minReactivity);
 #if defined(debugOn)
   Serial.print(" wr:");
   Serial.print(WorkReacChauff, 4);
@@ -161,9 +164,13 @@ float AnticipationConsigne(int schedulIndex, boolean halfHour) {
   int min30 = now.minute() % 30; // pour calcul du shift dans la tranche de 30 minutes
   int actualTemp = AverageTemp() * 10;
   for (int i = 1; i < sizeAnticipation; i++) {
-
     if ((anticipWork[i] - actualTemp) > (WorkReacChauff * (i - 1) * 10 + WorkReacChauff * 10 * (30 - min30) / 30) ) { //
-      SchedTemp = max(SchedTemp, (actualTemp + (anticipWork[i] - actualTemp) * 0.9)); // modif le 30/01/2015
+      int prevSchedTemp = SchedTemp;
+      SchedTemp = max(SchedTemp, (actualTemp + (anticipWork[i] - actualTemp) * 0.9) - 1); //
+      if (abs(SchedTemp - prevSchedTemp) < 2)
+      {
+        SchedTemp = prevSchedTemp;
+      }
       return (SchedTemp / 10);
     }
   }
