@@ -9,13 +9,13 @@
 
   Written by J Cuiller
 */
-/*  evolution a faire
-   ajouter indicateur position dans schedule au status
-   modifier le calcul anticipation pour eviter flip flop au moment de l'anticipation / retarder demarrage si ecart entre temp et expected faible ...
-
+/*  evolutions pretes
+ modification  meteo
+ modif prete passer le send current temp sur 2 octets pour depasser 25.5 >> necessite modifier indesc en synchro
+ 
 */
 #define Version "Th"
-#define ver 0x02 // version
+#define ver 0x03 // version a venir
 
 //#define debugConnection true     // can only be set with ATmega2560 or ATmega1280
 //#define debugOn true     // can only be set with ATmega2560 or ATmega1280
@@ -146,7 +146,7 @@ int windowSize = 0;
 #define PIDComputeCycle 240000
 #define LCDRefreshCycle 5000
 #define instructionRefreshCycle 15000
-#define extTempRefreshCycle 300000
+#define extTempRefreshCycle 400000
 #define manualMaxDuration 5400000    // 1h30
 #define extTempDuration 10800000     //3h
 #define autoSaveModeDuration 43200000    // 24h

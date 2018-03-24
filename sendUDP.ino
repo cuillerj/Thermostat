@@ -59,18 +59,35 @@ void SendStatus(boolean ack)
   GatewayLink.PendingDataReqSerial[7] = diagByte;
   GatewayLink.PendingDataReqSerial[8] = 0x00;
   GatewayLink.PendingDataReqSerial[9] = uint8_t(round(tempInstruction * 10));
+  /*
+    if (bitRead(diagByte, diagDS1820)) {
+    GatewayLink.PendingDataReqSerial[10] = 0x00;
+    }
+    else {
+    GatewayLink.PendingDataReqSerial[10] = uint8_t(round(AverageTemp() * 10));
+    }
+    GatewayLink.PendingDataReqSerial[11] = 0x00;
+    GatewayLink.PendingDataReqSerial[12] = ver;
+    GatewayLink.PendingDataReqSerial[13] = securityOn;
+    GatewayLink.PendingDataReqSerial[14] = uint8_t(abs(schedulIndex) / 256);
+    GatewayLink.PendingDataReqSerial[15] = uint8_t(abs(schedulIndex));
+    FormatFrame(responseFrame, ack, 0x10);
+  */
   if (bitRead(diagByte, diagDS1820)) {
     GatewayLink.PendingDataReqSerial[10] = 0x00;
+    GatewayLink.PendingDataReqSerial[11] = 0x00;
   }
   else {
-    GatewayLink.PendingDataReqSerial[10] = uint8_t(round(AverageTemp() * 10));
+    GatewayLink.PendingDataReqSerial[10] = uint8_t(round(AverageTemp() * 10) / 256);
+    GatewayLink.PendingDataReqSerial[11] = uint8_t(round(AverageTemp() * 10));
   }
-  GatewayLink.PendingDataReqSerial[11] = 0x00;
-  GatewayLink.PendingDataReqSerial[12] = ver;
+  GatewayLink.PendingDataReqSerial[12] = 0x00;
   GatewayLink.PendingDataReqSerial[13] = securityOn;
   GatewayLink.PendingDataReqSerial[14] = uint8_t(abs(schedulIndex) / 256);
   GatewayLink.PendingDataReqSerial[15] = uint8_t(abs(schedulIndex));
-  FormatFrame(responseFrame, ack, 0x10);
+  GatewayLink.PendingDataReqSerial[16] = 0x00;
+  GatewayLink.PendingDataReqSerial[17] = ver;
+  FormatFrame(responseFrame, ack, 0x12);
 }
 void SendPID()
 {
