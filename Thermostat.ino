@@ -9,9 +9,9 @@
 
   Written by J Cuiller
 */
-/*  evolutions pretes
+/*  release note
  modification  meteo
- modif prete passer le send current temp sur 2 octets pour depasser 25.5 >> necessite modifier indesc en synchro
+ send current temp sur 2 octets pour depasser 25.5 >> modif indesc en synchro
  
 */
 #define Version "Th"
