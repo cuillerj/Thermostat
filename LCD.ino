@@ -34,7 +34,8 @@ void LCDRefresh() {
 
   }
   else {
-    //  lcd.print("Off ");
+      lcd.print("Ver:");
+      lcd.print(ver);
   }
   lcd.setCursor(13, 1);
   if (extTemp >= 0)

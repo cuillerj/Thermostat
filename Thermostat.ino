@@ -10,12 +10,12 @@
   Written by J Cuiller
 */
 /*  release note
- modification  meteo
- send current temp sur 2 octets pour depasser 25.5 >> modif indesc en synchro
- 
+  modification  meteo
+  send current temp sur 2 octets pour depasser 25.5 >> modif indesc en synchro
+  v04 add double check GatewayReadyPIN ready 
 */
 #define Version "Th"
-#define ver 0x03 // version a venir
+#define ver 0x04 // version a venir
 
 //#define debugConnection true     // can only be set with ATmega2560 or ATmega1280
 //#define debugOn true     // can only be set with ATmega2560 or ATmega1280
@@ -25,7 +25,7 @@
 //#define debugPID true
 //#define debugBoot
 //#define debugInput
-//#define debugLcd
+#define debugLcd
 
 //#define serialPrintForced
 boolean diagFlag = false;
@@ -293,7 +293,11 @@ void loop() {
     bitWrite(diagByte, diagGatewayReady, 0);
   }
   else {
-    bitWrite(diagByte, diagGatewayReady, 1);
+    delay(10);
+    if (!digitalRead(GatewayReadyPIN)) // double check
+    {
+      bitWrite(diagByte, diagGatewayReady, 1);
+    }
   }
   if (diagByte != 0x00) {
     digitalWrite(DiagPIN, 1);
