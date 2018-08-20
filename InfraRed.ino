@@ -33,6 +33,7 @@ void ReceiveIR() {
     pendingCommand = modeOff;
     newCommand = false;
     bitWrite(pendingCommand, updateModeBit, 1);
+    LcdInit();
   }
   if (results.value == IRSelectModeWeek && newCommand) {
 #if defined(debugLcd)

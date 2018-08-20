@@ -34,8 +34,8 @@ void LCDRefresh() {
 
   }
   else {
-      lcd.print("Ver:");
-      lcd.print(ver);
+    lcd.print("Ver:");
+    lcd.print(ver);
   }
   lcd.setCursor(13, 1);
   if (extTemp >= 0)
@@ -129,3 +129,9 @@ void  ResetLcd(uint8_t loopPosition)
   LCDLoopValue = loopPosition;
   LCDLastRefreshTime = millis() - LCDRefreshCycle + lcdDelay;
 }
+void LcdInit()
+{
+  lcd.init();                      // initialize the lcd
+  lcd.backlight();
+}
+

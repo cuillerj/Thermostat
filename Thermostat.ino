@@ -11,11 +11,12 @@
 */
 /*  release note
   modification  meteo
-  send current temp sur 2 octets pour depasser 25.5 >> modif indesc en synchro
+  send current temp sur 2 octets pour depasser 25.5
   v04 add double check GatewayReadyPIN ready 
+  v05 add LCD init when switch off and increase duration double check gateway ready
 */
 #define Version "Th"
-#define ver 0x04 // version a venir
+#define ver 0x05 // version 
 
 //#define debugConnection true     // can only be set with ATmega2560 or ATmega1280
 //#define debugOn true     // can only be set with ATmega2560 or ATmega1280
@@ -30,19 +31,14 @@
 //#define serialPrintForced
 boolean diagFlag = false;
 
-/*
-   V0 refonte en cours de pilotage chaudiere (   remplacement de la communication RF par WIFI gateway ESP8266,   suppression du module DHT, ajout d'une fonction ecriture eeprom,
-   prevoir traiter info event externes (alarme, ouverture porte & fenetre...)...
-
-*/
 #include <EEPROM.h>
 #include <OneWire.h>
 #include <RTClib.h>
 #include <TimeLib.h>
 #include <LiquidCrystal_I2C.h>
-#include <C:\Users\jean\Documents\Arduino\libraries\ArduinoIRremotemaster\IRremote.h>
-#include <C:\Users\jean\Documents\Arduino\libraries\ArduinoIRremotemaster\IRremoteInt.h>
-#include <C:\Users\jean\Documents\Arduino\libraries\ArduinoIRremotemaster\IRremote.cpp>
+#include <\\JEAN-PC\Users\jean\Documents\Arduino\libraries\ArduinoIRremotemaster\IRremote.h>
+#include <\\JEAN-PC\Users\jean\Documents\Arduino\libraries\ArduinoIRremotemaster\IRremoteInt.h>
+#include <\\JEAN-PC\Users\jean\Documents\Arduino\libraries\ArduinoIRremotemaster\IRremote.cpp>
 /*
   communication parameters used for exchanges with ESP8266 Wifi Gateway
 */
@@ -215,8 +211,7 @@ void setup() {
   Wire.begin();
   RTC.begin();
   DateTime now = RTC.now();
-  lcd.init();                      // initialize the lcd
-  lcd.backlight();
+  LcdInit();
   lcd.print(now.hour());
   lcd.print(":");
   lcd.print(now.minute());
@@ -293,7 +288,7 @@ void loop() {
     bitWrite(diagByte, diagGatewayReady, 0);
   }
   else {
-    delay(10);
+    delay(1000);
     if (!digitalRead(GatewayReadyPIN)) // double check
     {
       bitWrite(diagByte, diagGatewayReady, 1);
