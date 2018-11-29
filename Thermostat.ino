@@ -12,11 +12,12 @@
 /*  release note
   modification  meteo
   send current temp sur 2 octets pour depasser 25.5
-  v04 add double check GatewayReadyPIN ready 
+  v04 add double check GatewayReadyPIN ready
   v05 add LCD init when switch off and increase duration double check gateway ready
+  v06 add lcdinit after siwth onof gateway
 */
 #define Version "Th"
-#define ver 0x05 // version 
+#define ver 0x06 // version 
 
 //#define debugConnection true     // can only be set with ATmega2560 or ATmega1280
 //#define debugOn true     // can only be set with ATmega2560 or ATmega1280
@@ -26,7 +27,7 @@
 //#define debugPID true
 //#define debugBoot
 //#define debugInput
-#define debugLcd
+//#define debugLcd
 
 //#define serialPrintForced
 boolean diagFlag = false;
@@ -266,8 +267,8 @@ void setup() {
 
   delay(15000);
   ReadTemperature();                // init the temperature table
-
-  digitalWrite(GatewayPowerPIN, GatewayPowerOn);   // power on gateway NC*
+  PowerGateway(true);
+  //  digitalWrite(GatewayPowerPIN, GatewayPowerOn);   // power on gateway NC*
   bitWrite(diagByte, diagTempRampup, 0);
   gatewayPowerOnStatus = true;
   irrecv.enableIRIn(); // Start the receiver
@@ -399,17 +400,19 @@ void loop() {
   else {
     if (millis() - lastGatewayPowerOnTime > gatewayPowerOnCycle && millis() - lastGatewayPowerOnTime < 2 * gatewayPowerOnCycle && gatewayPowerOnStatus)
     {
-      digitalWrite(GatewayPowerPIN, GatewayPowerOff);
-      gatewayPowerOnStatus = false;
+      PowerGateway(false);
+   //   digitalWrite(GatewayPowerPIN, GatewayPowerOff);
+  //    gatewayPowerOnStatus = false;
 #if defined(debugConnection)
       Serial.println("Power off gateway");
 #endif
     }
     if (millis() - lastGatewayPowerOnTime >= 2 * gatewayPowerOnCycle)
     {
-      digitalWrite(GatewayPowerPIN, GatewayPowerOn);
+      PowerGateway(true);
+    //  digitalWrite(GatewayPowerPIN, GatewayPowerOn);
       lastGatewayPowerOnTime = millis();
-      gatewayPowerOnStatus = true;
+     // gatewayPowerOnStatus = true;
 #if defined(debugConnection)
       Serial.println("Power on gateway");
 #endif
@@ -535,8 +538,21 @@ void   NewEvents()
 }
 
 
-
-
+void  PowerGateway(boolean OnOff)
+{
+  if (OnOff)
+  {
+    digitalWrite(GatewayPowerPIN, GatewayPowerOn);   // power on gateway NC*
+    gatewayPowerOnStatus = true;
+  }
+  else
+  {
+    digitalWrite(GatewayPowerPIN, GatewayPowerOff);   // power on gateway NC*
+    gatewayPowerOnStatus = false;
+  }
+  delay(200);
+  LcdInit();
+}
 
 
 

@@ -76,6 +76,8 @@ void ReceiveIR() {
     Serial.println(" reboot gateway");
 #endif
     newCommand = false;
+    PowerGateway(!gatewayPowerOnStatus);
+    /*
     gatewayPowerOnStatus = !gatewayPowerOnStatus;
     if (GatewayPowerOn == 1) {
       digitalWrite(GatewayPowerPIN, gatewayPowerOnStatus);
@@ -83,7 +85,7 @@ void ReceiveIR() {
     else {
       digitalWrite(GatewayPowerPIN, !gatewayPowerOnStatus);
     }
-
+*/
   }
 }
 
