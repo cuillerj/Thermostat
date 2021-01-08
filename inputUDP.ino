@@ -65,8 +65,8 @@ void TraitInput(uint8_t cmdInput) {
             convert byte input to char date and time to setup clock
             input[0] id j number, [1] month number, [2] year number minus 2000, [3] hour number, [4]minute number, [5] second number
           */
-          char DateToInit[15] = "xxx xx 20xx";
-          char TimeToInit[9] = "xx: xx: xx";
+          char DateToInit[12] = "xx xx 20xx";
+          char TimeToInit[8] = "xx:xx:xx";
           if (GatewayLink.DataInSerial[firstDataBytePosition + 1] > 0 && GatewayLink.DataInSerial[firstDataBytePosition + 1] < 13)
           {
             DateToInit[0] = MonthList[3 * (GatewayLink.DataInSerial[firstDataBytePosition + 1] - 1)];
@@ -82,9 +82,10 @@ void TraitInput(uint8_t cmdInput) {
             TimeToInit[4] = uint8_t((GatewayLink.DataInSerial[firstDataBytePosition + 6] - (GatewayLink.DataInSerial[firstDataBytePosition + 6] / 10) * 10) + 48);
             TimeToInit[6] = uint8_t(GatewayLink.DataInSerial[firstDataBytePosition + 7] / 10 + 48);
             TimeToInit[7] = uint8_t((GatewayLink.DataInSerial[firstDataBytePosition + 7] - (GatewayLink.DataInSerial[firstDataBytePosition + 7] / 10) * 10) + 48);
-            RTC.adjust(DateTime(DateToInit, TimeToInit));
+            
+  //          RTC.adjust(DateTime(DateToInit, TimeToInit));
             lastUpdateClock = millis();
-            bitWrite(diagByte, diagTimeUpToDate, 0);
+            bitWrite(diagByte, diagTimeUpToDate, !RTCAdjustime(DateToInit, TimeToInit));
 #if defined(debugInput)
             Serial.print("set time ");
             DateTime now = RTC.now();

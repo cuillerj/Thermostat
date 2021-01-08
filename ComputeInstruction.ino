@@ -2,7 +2,13 @@ void ComputeInstruction() {
   /*
      compute temperature request
   */
-
+  if (!IsCurrentDateTimeOk()) {
+    bitWrite(diagByte, diagTimeUpToDate, 1);
+#if defined(debugOn)
+    Serial.print("time error");
+#endif
+    return;
+  }
   DateTime now = RTC.now();
   if (bitRead(runningMode, temporarilyHoldModeBit))
   {
@@ -32,11 +38,11 @@ void ComputeInstruction() {
       {
         schedulIndex = (7 * 24 + now.hour());
 #if defined(debugOn)
-        Serial.print("day1 idx:");
+        Serial.print("day1 idx: ");
         Serial.print(Schedule[schedulIndex], HEX);
-        Serial.print(" flag:");
+        Serial.print(" flag: ");
         Serial.print((now.minute() >= 30));
-        Serial.print(" instr:");
+        Serial.print(" instr: ");
         Serial.println(AnticipationConsigne(schedulIndex, (now.minute() >= 30)));
 #endif
         tempInstruction = AnticipationConsigne(schedulIndex, (now.minute() >= 30)) ;
@@ -50,11 +56,11 @@ void ComputeInstruction() {
       {
         schedulIndex = (8 * 24 + now.hour());
 #if defined(debugOn)
-        Serial.print("day2 idx:");
+        Serial.print("day2 idx: ");
         Serial.print(Schedule[schedulIndex], HEX);
-        Serial.print(" flag:");
+        Serial.print(" flag: ");
         Serial.print((now.minute() >= 30));
-        Serial.print(" instr:");
+        Serial.print(" instr: ");
         Serial.println(AnticipationConsigne(schedulIndex, (now.minute() >= 30)));
 #endif
         tempInstruction = AnticipationConsigne(schedulIndex, (now.minute() >= 30)) ;
@@ -68,11 +74,11 @@ void ComputeInstruction() {
       {
         schedulIndex = ((now.dayOfTheWeek()) * 24 + now.hour());
 #if defined(debugOn)
-        Serial.print("week idx:");
+        Serial.print("week idx: ");
         Serial.print(Schedule[schedulIndex], HEX);
-        Serial.print(" flag:");
+        Serial.print(" flag: ");
         Serial.print((now.minute() >= 30));
-        Serial.print(" instr:");
+        Serial.print(" instr: ");
         Serial.println(AnticipationConsigne(schedulIndex, (now.minute() >= 30)));
 #endif
         tempInstruction = AnticipationConsigne(schedulIndex, (now.minute() >= 30)) ;
@@ -118,11 +124,11 @@ float AnticipationConsigne(int schedulIndex, boolean halfHour) {
     anticipWork[6] = temperatureList[Schedule[schedulIndex + 3] % (scheduleSize - 1) >> 4 & 0x0F];
   }
 #if defined(debugOn)
-  Serial.print("work:");
+  Serial.print("work: ");
   for (int i = 0; i < sizeAnticipation; i++)
   {
     Serial.print(anticipWork[i]);
-    Serial.print("-");
+    Serial.print(" - ");
   }
   Serial.println();
 #endif
@@ -154,7 +160,7 @@ float AnticipationConsigne(int schedulIndex, boolean halfHour) {
   }
   WorkReacChauff = max(newReac + (newReac * deltaTemp / defaultExtTemp) * workCoef, minReactivity);
 #if defined(debugOn)
-  Serial.print(" wr:");
+  Serial.print(" wr: ");
   Serial.print(WorkReacChauff, 4);
   Serial.print(" ");
   Serial.print(deltaTemp);
@@ -171,9 +177,17 @@ float AnticipationConsigne(int schedulIndex, boolean halfHour) {
       {
         SchedTemp = prevSchedTemp;
       }
+#if defined(debugOn)
+      Serial.print(" sc1: ");
+      Serial.print(SchedTemp);
+#endif
       return (SchedTemp / 10);
+
     }
   }
-
+#if defined(debugOn)
+  Serial.print(" sc2: ");
+  Serial.print(SchedTemp);
+#endif
   return (SchedTemp / 10);
 }

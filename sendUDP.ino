@@ -4,7 +4,6 @@ void SendUnitarySchedule(uint8_t scheduleID)
 {
 
   GatewayLink.PendingDataReqSerial[3] = unitaryScheduleResponse;
-
   GatewayLink.PendingDataReqSerial[4] = firstScheduleIndicatorPosition + scheduleID; //  translation from schedule poisition to station indicator position
   GatewayLink.PendingDataReqSerial[5] = Schedule[scheduleID];
   GatewayLink.PendingDataReqSerial[6] = 0x00;
@@ -187,4 +186,3 @@ void SendAckFrame()
   Serial.println(CRC8(GatewayLink.PendingDataReqSerial , 5), HEX);
 #endif
 }
-

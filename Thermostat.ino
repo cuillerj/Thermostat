@@ -15,15 +15,16 @@
   v04 add double check GatewayReadyPIN ready
   v05 add LCD init when switch off and increase duration double check gateway ready
   v06 add lcdinit after siwth onof gateway
+  v07 library IRRemote moved  non testee modif timme update
 */
 #define Version "Th"
-#define ver 0x06 // version 
+#define ver 0x07 // version
 
 //#define debugConnection true     // can only be set with ATmega2560 or ATmega1280
-//#define debugOn true     // can only be set with ATmega2560 or ATmega1280
+#define debugOn true     // can only be set with ATmega2560 or ATmega1280
 //#define debugExec true     // can only be set with ATmega2560 or ATmega1280
-//#define debugDS1820 true
-//#define debugEeprom true
+#define debugDS1820 true
+#define debugEeprom true
 //#define debugPID true
 //#define debugBoot
 //#define debugInput
@@ -37,9 +38,12 @@ boolean diagFlag = false;
 #include <RTClib.h>
 #include <TimeLib.h>
 #include <LiquidCrystal_I2C.h>
-#include <\\JEAN-PC\Users\jean\Documents\Arduino\libraries\ArduinoIRremotemaster\IRremote.h>
-#include <\\JEAN-PC\Users\jean\Documents\Arduino\libraries\ArduinoIRremotemaster\IRremoteInt.h>
-#include <\\JEAN-PC\Users\jean\Documents\Arduino\libraries\ArduinoIRremotemaster\IRremote.cpp>
+//#include <\\JEAN-PC\Users\jean\Documents\Arduino\libraries\ArduinoIRremotemaster\IRremote.h>
+//#include <\\JEAN-PC\Users\jean\Documents\Arduino\libraries\ArduinoIRremotemaster\IRremoteInt.h>
+//#include <\\JEAN-PC\Users\jean\Documents\Arduino\libraries\ArduinoIRremotemaster\IRremote.cpp>
+#include <E:\Arduino\libraries\ArduinoIRremotemaster\IRremote.h>
+#include <E:\Arduino\libraries\ArduinoIRremotemaster\IRremoteInt.h>
+#include <E:\Arduino\libraries\ArduinoIRremotemaster\IRremote.cpp>
 /*
   communication parameters used for exchanges with ESP8266 Wifi Gateway
 */
@@ -136,7 +140,7 @@ int windowSize = 0;
 */
 
 #define pendingTimeout 60000           // no loner wait for answer to a request longer that this timer
-#define updateClockCycle 300000        // time request using this cycle
+#define updateClockCycle 600000        // time request using this cycle
 #define updateClockLimit 900000        // limit duration without receiving time information over that time bit error is raised 
 #define delayBetweenInfo 5000         // delay before sending new data to the server  
 #define temperatureReadCycle 30000
@@ -211,6 +215,7 @@ void setup() {
   // pinMode(GatewayConfigPin, OUTPUT);
   Wire.begin();
   RTC.begin();
+
   DateTime now = RTC.now();
   LcdInit();
   lcd.print(now.hour());
@@ -553,222 +558,3 @@ void  PowerGateway(boolean OnOff)
   delay(200);
   LcdInit();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
