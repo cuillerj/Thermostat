@@ -26,19 +26,19 @@ boolean IsCurrentDateTimeOk() {
     retCode = false;;
   }
   if (now.month() < 0 || now.month() > 12) {
-
+    retCode = false;
   }
   if (now.day() < 0 || now.day() > 31) {
-    retCode = false;;
+    retCode = false;
   }
   if (now.hour() < 0 || now.hour() > 24) {
-    retCode = false;;
+    retCode = false;
   }
   if (now.minute() < 0 || now.minute() > 60) {
-    retCode = false;;
+    retCode = false;
   }
   if (now.second() < 0 || now.second() > 60) {
-    retCode = false;;
+    retCode = false;
   }
   return retCode;
 }

@@ -37,6 +37,10 @@ void ComputeInstruction() {
     case modeDay1:
       {
         schedulIndex = (7 * 24 + now.hour());
+        if (schedulIndex < 168 || schedulIndex > 192) {
+          bitWrite(diagByte, diagTimeUpToDate, 1);
+          break;
+        }
 #if defined(debugOn)
         Serial.print("day1 idx: ");
         Serial.print(Schedule[schedulIndex], HEX);
@@ -55,6 +59,10 @@ void ComputeInstruction() {
     case modeDay2:
       {
         schedulIndex = (8 * 24 + now.hour());
+        if (schedulIndex < 192 || schedulIndex > 216) {
+          bitWrite(diagByte, diagTimeUpToDate, 1);
+          break;
+        }
 #if defined(debugOn)
         Serial.print("day2 idx: ");
         Serial.print(Schedule[schedulIndex], HEX);
@@ -73,6 +81,10 @@ void ComputeInstruction() {
     case modeWeek:
       {
         schedulIndex = ((now.dayOfTheWeek()) * 24 + now.hour());
+        if (schedulIndex < 0 || schedulIndex > 168) {
+          bitWrite(diagByte, diagTimeUpToDate, 1);
+          break;
+        }
 #if defined(debugOn)
         Serial.print("week idx: ");
         Serial.print(Schedule[schedulIndex], HEX);

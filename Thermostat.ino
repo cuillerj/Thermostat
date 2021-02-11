@@ -16,15 +16,16 @@
   v05 add LCD init when switch off and increase duration double check gateway ready
   v06 add lcdinit after siwth onof gateway
   v07 library IRRemote moved  non testee modif timme update
+  v08 schedul index control added
 */
 #define Version "Th"
-#define ver 0x07 // version
+#define ver 0x08 // version
 
 //#define debugConnection true     // can only be set with ATmega2560 or ATmega1280
-#define debugOn true     // can only be set with ATmega2560 or ATmega1280
+//#define debugOn true     // can only be set with ATmega2560 or ATmega1280
 //#define debugExec true     // can only be set with ATmega2560 or ATmega1280
-#define debugDS1820 true
-#define debugEeprom true
+//#define debugDS1820 true
+//#define debugEeprom true
 //#define debugPID true
 //#define debugBoot
 //#define debugInput
@@ -355,7 +356,7 @@ void loop() {
     LCDRefresh();
     LCDLastRefreshTime = millis();
   }
-  if (pendingCommand != 0x00)
+  if (pendingCommand != 0x00)   // IR pending command
   {
     ExecuteCommand();
   }
